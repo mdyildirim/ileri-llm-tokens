@@ -11,7 +11,7 @@ import { Toast, ToastMessage } from './components/Toast';
 import { AppState, DatasetRow, ResultRow, Provider, ProviderSettingsData, AppSettings } from './types';
 import { getProviders } from './services/llmProviders';
 import { toNFC, stripDiacriticsTr, asyncPool } from './utils';
-import { DarkModeToggle, GithubIcon } from './components/Icons';
+import { DarkModeToggle, GithubIcon, IleriLogo } from './components/Icons';
 
 const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(AppState.Initial);
@@ -235,6 +235,10 @@ const App: React.FC = () => {
                 </main>
 
                 <footer className="text-center mt-12 text-bunker-500 dark:text-bunker-400 text-sm">
+                    <a href="https://ileri.org.tr" target="_blank" rel="noopener noreferrer" className="flex justify-center items-center gap-2 mb-4 group">
+                        <IleriLogo />
+                        <span className="text-2xl font-bold tracking-wider text-bunker-800 dark:text-bunker-100 transition-colors group-hover:text-sky-500 dark:group-hover:text-sky-400">İLERİ</span>
+                    </a>
                     <p>Built for client-side analysis. API keys are stored in your browser's memory or localStorage only.</p>
                 </footer>
 
