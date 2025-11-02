@@ -1,0 +1,83 @@
+
+import React from 'react';
+import { ResultRow } from '../types';
+import { exportToCsv, exportToJsonl } from '../utils';
+import { DownloadIcon } from './Icons';
+
+interface ResultsDisplayProps {
+    results: ResultRow[];
+}
+
+export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
+    if (results.length === 0) {
+        return <p className="text-center text-bunker-500 dark:text-bunker-400 py-4">Waiting for results...</p>;
+    }
+
+    const totalCost = results.reduce((acc, row) => acc + row.cost, 0);
+
+    return (
+        <div className="mt-8">
+             <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">Raw Data</h3>
+            <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
+                <div className="p-3 bg-sky-100 dark:bg-sky-500/10 rounded-lg text-sm">
+                    <p className="text-sky-800 dark:text-sky-200">
+                        <strong>Total Run Cost:</strong>
+                        <span className="font-mono ml-2 font-bold">${totalCost.toFixed(6)}</span>
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => exportToCsv(results)} className="px-3 py-1.5 text-sm rounded-md font-semibold text-sky-700 dark:text-sky-200 bg-sky-100 dark:bg-sky-500/20 hover:bg-sky-200 dark:hover:bg-sky-500/30 transition-colors flex items-center gap-2">
+                        <DownloadIcon /> Export CSV
+                    </button>
+                    <button onClick={() => exportToJsonl(results)} className="px-3 py-1.5 text-sm rounded-md font-semibold text-sky-700 dark:text-sky-200 bg-sky-100 dark:bg-sky-500/20 hover:bg-sky-200 dark:hover:bg-sky-500/30 transition-colors flex items-center gap-2">
+                        <DownloadIcon /> Export JSONL
+                    </button>
+                </div>
+            </div>
+            <div className="overflow-x-auto max-h-[500px] rounded-lg border border-bunker-200 dark:border-bunker-700">
+                <table className="min-w-full divide-y divide-bunker-200 dark:divide-bunker-700">
+                    <thead className="bg-bunker-100 dark:bg-bunker-800 sticky top-0">
+                        <tr>
+                            {['id', 'provider', 'model', 'variant', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'mode', 'cost', 'responseTime'].map(header => (
+                                <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">
+                                    {header === 'responseTime' ? 'Response Time (ms)' : header.replace('_', ' ')}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-bunker-900 divide-y divide-bunker-200 dark:divide-bunker-700">
+                        {results.map((row, index) => (
+                            <tr key={index} className={`transition-colors duration-200 ${row.error ? 'bg-red-50 dark:bg-red-500/10' : 'even:bg-bunker-50 dark:even:bg-bunker-800/50'} hover:bg-sky-50 dark:hover:bg-sky-500/10`}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-bunker-900 dark:text-bunker-100">{row.id}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.provider}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.model}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.variant}</td>
+                                {row.error ? (
+                                    <td colSpan={6} className="px-6 py-4 whitespace-normal text-sm text-red-700 dark:text-red-300">
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold">Error</span>
+                                            <span>{row.error}</span>
+                                        </div>
+                                    </td>
+                                ) : (
+                                    <>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.prompt_tokens}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.completion_tokens}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-bunker-700 dark:text-bunker-200">{row.total_tokens}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${row.mode === 'real' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'}`}>
+                                                {row.mode}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-bunker-500 dark:text-bunker-300">${row.cost.toFixed(6)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.responseTime} ms</td>
+                                    </>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
