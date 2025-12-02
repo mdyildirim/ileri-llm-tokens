@@ -12,6 +12,7 @@ import { AppState, DatasetRow, ResultRow, Provider, ProviderSettingsData, AppSet
 import { getProviders } from './services/llmProviders';
 import { toNFC, stripDiacriticsTr, asyncPool } from './utils';
 import { DarkModeToggle, GithubIcon, IleriLogo } from './components/Icons';
+import { translations } from './translations';
 
 const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(AppState.Initial);
@@ -21,6 +22,9 @@ const App: React.FC = () => {
     const [results, setResults] = useState<ResultRow[]>([]);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [language, setLanguage] = useState<'en' | 'tr'>('tr'); // Default to TR
+
+    const t = translations[language];
 
     const [providerSettings, setProviderSettings] = useState<ProviderSettingsData>({
         openai: { enabled: true, apiKey: '', models: ['gpt-5-pro', 'gpt-5', 'gpt-5-mini'], remember: false },
@@ -41,6 +45,15 @@ const App: React.FC = () => {
     useEffect(() => {
         const storedDarkMode = localStorage.getItem('darkMode') === 'true';
         setIsDarkMode(storedDarkMode);
+        const storedLang = localStorage.getItem('language') as 'en' | 'tr';
+        if (storedLang && (storedLang === 'en' || storedLang === 'tr')) {
+            setLanguage(storedLang);
+        } else {
+             // Default is initialized to 'tr', so no action needed if nothing in storage.
+             // If we wanted to detect browser:
+             // const browserLang = navigator.language.startsWith('tr') ? 'tr' : 'en';
+             // setLanguage(browserLang);
+        }
     }, []);
 
     useEffect(() => {
@@ -52,6 +65,12 @@ const App: React.FC = () => {
             localStorage.setItem('darkMode', 'false');
         }
     }, [isDarkMode]);
+
+    const toggleLanguage = () => {
+        const newLang = language === 'en' ? 'tr' : 'en';
+        setLanguage(newLang);
+        localStorage.setItem('language', newLang);
+    };
 
     const addToast = (message: Omit<ToastMessage, 'id'>) => {
         setToasts(prev => [...prev, { ...message, id: Date.now() }]);
@@ -86,7 +105,7 @@ const App: React.FC = () => {
                 tr_nodia: newSettings.regenerateTrNodia ? stripDiacriticsTr(row.tr) : (rawData.find(r => r.id === row.id) || {}).tr_nodia || stripDiacriticsTr(row.tr)
             }));
             setDataset(regenerated);
-            addToast({ type: 'info', title: 'Dataset Updated', message: `tr_nodia column has been ${newSettings.regenerateTrNodia ? 're-generated' : 'reverted'}.` });
+            addToast({ type: 'info', title: t.toasts.datasetUpdate, message: newSettings.regenerateTrNodia ? t.toasts.datasetUpdateMsg : t.toasts.revertedMsg });
         }
     };
     
@@ -102,7 +121,7 @@ const App: React.FC = () => {
             .filter((p): p is Provider => !!p);
 
         if (enabledProviders.length === 0) {
-            addToast({ type: 'error', title: 'No Providers', message: 'Please enable at least one provider to run the benchmark.' });
+            addToast({ type: 'error', title: t.toasts.noProviders, message: t.toasts.noProvidersMsg });
             setAppState(AppState.ReadyToRun);
             return;
         }
@@ -124,7 +143,7 @@ const App: React.FC = () => {
         }
         
         if (tasks.length === 0) {
-            addToast({ type: 'warning', title: 'No Models', message: 'Please add at least one model to an enabled provider.' });
+            addToast({ type: 'warning', title: t.toasts.noModels, message: t.toasts.noModelsMsg });
             setAppState(AppState.ReadyToRun);
             return;
         }
@@ -159,10 +178,10 @@ const App: React.FC = () => {
         await asyncPool(appSettings.concurrency, tasks, processTask, appSettings.delay, cancelRunRef);
 
         if (cancelRunRef.current) {
-            addToast({ type: 'warning', title: 'Run Cancelled', message: 'The benchmark run was cancelled by the user.' });
+            addToast({ type: 'warning', title: t.toasts.runCancelled, message: t.toasts.runCancelledMsg });
             setAppState(AppState.ReadyToRun);
         } else {
-            addToast({ type: 'success', title: 'Run Complete', message: 'Benchmark finished successfully.' });
+            addToast({ type: 'success', title: t.toasts.runComplete, message: t.toasts.runCompleteMsg });
             setAppState(AppState.ShowingResults);
         }
     };
@@ -182,29 +201,29 @@ const App: React.FC = () => {
     const renderContent = () => {
         switch(appState) {
             case AppState.Initial:
-                return <FileUpload onFileLoaded={handleFileLoaded} />;
+                return <FileUpload onFileLoaded={handleFileLoaded} t={t} />;
             case AppState.MappingColumns:
-                return <ColumnMapper headers={headers} onMap={handleColumnMapping} onCancel={() => setAppState(AppState.Initial)} />;
+                return <ColumnMapper headers={headers} onMap={handleColumnMapping} onCancel={() => setAppState(AppState.Initial)} t={t} />;
             case AppState.ReadyToRun:
             case AppState.Running:
             case AppState.ShowingResults:
                 return (
                     <div className="space-y-8">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <ProviderSettings settings={providerSettings} onChange={setProviderSettings} disabled={appState === AppState.Running} />
-                            <RunControls settings={appSettings} onSettingsChange={handleSettingsChange} onRun={handleRun} onCancel={handleCancel} onReset={handleReset} appState={appState} datasetSize={dataset.length} providerSettings={providerSettings} />
+                            <ProviderSettings settings={providerSettings} onChange={setProviderSettings} disabled={appState === AppState.Running} t={t} />
+                            <RunControls settings={appSettings} onSettingsChange={handleSettingsChange} onRun={handleRun} onCancel={handleCancel} onReset={handleReset} appState={appState} datasetSize={dataset.length} providerSettings={providerSettings} t={t} />
                         </div>
                         {(appState === AppState.Running || results.length > 0) &&
                             <div className="p-4 sm:p-6 bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg backdrop-blur-sm border border-white/20">
-                                <h2 className="text-2xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">Results</h2>
+                                <h2 className="text-2xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.results.title}</h2>
                                 {appState === AppState.Running && (
                                     <div className="w-full bg-bunker-200 dark:bg-bunker-700 rounded-full h-4 mb-4 overflow-hidden">
                                         <div id="progress-bar-inner" className="bg-sky-500 h-4 rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
                                     </div>
                                 )}
-                                {appState === AppState.ShowingResults && results.length > 0 && <AnalysisSummary results={results} />}
-                                <ResultsDisplay results={results} />
-                                {appState === AppState.ShowingResults && results.length > 0 && <ChartsDisplay results={results} isDarkMode={isDarkMode} />}
+                                {appState === AppState.ShowingResults && results.length > 0 && <AnalysisSummary results={results} t={t} />}
+                                <ResultsDisplay results={results} t={t} />
+                                {appState === AppState.ShowingResults && results.length > 0 && <ChartsDisplay results={results} isDarkMode={isDarkMode} t={t} />}
                             </div>
                         }
                     </div>
@@ -220,10 +239,16 @@ const App: React.FC = () => {
                 <header className="flex justify-between items-center mb-10">
                     <div className="flex items-center gap-4">
                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sky-500"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold text-bunker-900 dark:text-bunker-50 tracking-tight">LLM Tokenizer Benchmark</h1>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold text-bunker-900 dark:text-bunker-50 tracking-tight">{t.title}</h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        <a href="https://github.com/google/generative-ai-docs" target="_blank" rel="noopener noreferrer" aria-label="Github Repository" className="text-bunker-500 dark:text-bunker-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                        <button 
+                            onClick={toggleLanguage}
+                            className="px-3 py-1.5 rounded-lg text-sm font-bold bg-bunker-200 dark:bg-bunker-800 text-bunker-700 dark:text-bunker-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
+                        >
+                            {language === 'en' ? 'TR' : 'EN'}
+                        </button>
+                        <a href="https://github.com/mdyildirim/ileri-llm-tokens" target="_blank" rel="noopener noreferrer" aria-label="Github Repository" className="text-bunker-500 dark:text-bunker-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
                             <GithubIcon />
                         </a>
                         <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
@@ -239,7 +264,7 @@ const App: React.FC = () => {
                         <IleriLogo />
                         <span className="text-2xl font-bold tracking-wider text-bunker-800 dark:text-bunker-100 transition-colors group-hover:text-sky-500 dark:group-hover:text-sky-400">İLERİ</span>
                     </a>
-                    <p>Built for client-side analysis. API keys are stored in your browser's memory or localStorage only.</p>
+                    <p>{t.footer}</p>
                 </footer>
 
                 <div className="fixed bottom-4 right-4 z-50 w-full max-w-sm">

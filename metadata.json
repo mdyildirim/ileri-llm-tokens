@@ -1,5 +1,5 @@
 {
-  "name": "LLM Tokenizer Benchmark",
+  "name": "LLM Tokenizer Benchmark V2",
   "description": "A client-side web application to upload a parallel EN/TR dataset, enter API keys, and measure prompt token usage and simple costs across major LLM providers. All processing is done in the browser.",
   "requestFramePermissions": []
 }

@@ -1,10 +1,11 @@
 
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
-import { ResultRow } from '../types';
+import { ResultRow, Translations } from '../types';
 
 interface ChartsDisplayProps {
     results: ResultRow[];
     isDarkMode: boolean;
+    t: Translations;
 }
 
 const CHART_COLORS = [
@@ -38,13 +39,13 @@ const ChartComponent: React.FC<{ chartId: string, config: any }> = ({ chartId, c
     return <canvas ref={chartRef} id={chartId}></canvas>;
 };
 
-export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMode }) => {
+export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMode, t }) => {
     const validResults = useMemo(() => results.filter(r => !r.error), [results]);
 
     if (validResults.length === 0) {
         return (
             <div className="mt-8 text-center text-bunker-500 dark:text-bunker-400">
-                <p>No valid data available to display charts.</p>
+                <p>{t.charts.noData}</p>
             </div>
         );
     }
@@ -118,11 +119,11 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
                 }, {} as Record<string, Partial<Record<ResultRow['variant'], number>>>);
 
                 const tr_en_ratios = Object.values(resultsByRow)
-                    .map(row => (row.tr && row.en) ? row.tr / row.en : null)
+                    .map((row: any) => (row.tr && row.en) ? row.tr / row.en : null)
                     .filter((v): v is number => v !== null && isFinite(v));
 
                 const tr_nodia_tr_ratios = Object.values(resultsByRow)
-                    .map(row => (row.tr_nodia && row.tr) ? row.tr_nodia / row.tr : null)
+                    .map((row: any) => (row.tr_nodia && row.tr) ? row.tr_nodia / row.tr : null)
                     .filter((v): v is number => v !== null && isFinite(v));
 
                 const avg_tr_en = tr_en_ratios.length > 0 ? tr_en_ratios.reduce((a, b) => a + b, 0) / tr_en_ratios.length : 0;
@@ -168,23 +169,23 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
 
     return (
         <div className="mt-8 space-y-8">
-            <h3 className="text-xl font-bold text-bunker-800 dark:text-bunker-100">Visualizations</h3>
+            <h3 className="text-xl font-bold text-bunker-800 dark:text-bunker-100">{t.charts.title}</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">Mean Prompt Tokens by Variant</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.meanTokens}</h3>
                     <div className="relative grow">
                         <ChartComponent chartId="meanTokensChart" config={meanTokensConfig} />
                     </div>
                 </div>
                 <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">Mean Token Ratios</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.meanRatios}</h3>
                      <div className="relative grow">
                         <ChartComponent chartId="ratioChart" config={ratioConfig} />
                     </div>
                 </div>
             </div>
             <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">Average Response Time by Provider (Real API calls)</h3>
+                <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.avgTime}</h3>
                 <div className="relative grow">
                     <ChartComponent chartId="responseTimeChart" config={avgResponseTimeConfig} />
                 </div>

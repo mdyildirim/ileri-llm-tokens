@@ -1,12 +1,14 @@
 
 import React, { useCallback, useState } from 'react';
 import { parseCsv, parseJsonl } from '../utils';
+import { Translations } from '../types';
 
 interface FileUploadProps {
     onFileLoaded: (data: Record<string, string>[], headers: string[]) => void;
+    t: Translations;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded, t }) => {
     const [error, setError] = useState<string | null>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,13 +26,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded }) => {
                 } else if (file.name.endsWith('.jsonl')) {
                     data = parseJsonl(content);
                 } else {
-                    throw new Error('Unsupported file type. Please upload a CSV or JSONL file.');
+                    throw new Error(t.upload.errorType);
                 }
                 if (data.length > 0) {
                     const headers = Object.keys(data[0]);
                     onFileLoaded(data, headers);
                 } else {
-                    throw new Error('File is empty or could not be parsed.');
+                    throw new Error(t.upload.errorEmpty);
                 }
             } catch (err: any) {
                 setError(err.message);
@@ -46,7 +48,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded }) => {
         if (file) {
              handleFileChange({ target: { files: [file] } } as any);
         }
-    }, [handleFileChange]);
+    }, [handleFileChange, t]);
 
     const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -56,8 +58,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded }) => {
 
     return (
         <div className="p-6 sm:p-8 bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg text-center backdrop-blur-sm border border-white/20">
-            <h2 className="text-2xl font-bold mb-2 text-bunker-800 dark:text-bunker-100">1. Upload Dataset</h2>
-            <p className="text-bunker-600 dark:text-bunker-300 mb-6">Drag & drop or click to upload a CSV or JSONL file.</p>
+            <h2 className="text-2xl font-bold mb-2 text-bunker-800 dark:text-bunker-100">{t.upload.title}</h2>
+            <p className="text-bunker-600 dark:text-bunker-300 mb-6">{t.upload.desc}</p>
             <div 
                 onDrop={onDrop}
                 onDragOver={onDragOver}
@@ -73,8 +75,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileLoaded }) => {
                 />
                 <label htmlFor="file-upload" className="relative flex flex-col items-center justify-center space-y-2 cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-bunker-400 dark:text-bunker-500 group-hover:text-sky-500 transition-colors"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                    <span className="font-semibold text-sky-600 dark:text-sky-400">Choose a file</span>
-                    <span className="text-bunker-500 dark:text-bunker-400">or drag it here</span>
+                    <span className="font-semibold text-sky-600 dark:text-sky-400">{t.upload.choose}</span>
+                    <span className="text-bunker-500 dark:text-bunker-400">{t.upload.drag}</span>
                 </label>
             </div>
             {error && <p className="mt-4 text-red-500">{error}</p>}

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { DatasetRow, ResultRow } from './types';
 
 // Normalization functions

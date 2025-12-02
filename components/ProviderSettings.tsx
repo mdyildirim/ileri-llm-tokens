@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { ProviderSettingsData, ProviderSetting } from '../types';
+import { ProviderSettingsData, ProviderSetting, Translations } from '../types';
 import { EyeIcon, EyeOffIcon } from './Icons';
 
 interface ProviderSettingsProps {
     settings: ProviderSettingsData;
     onChange: (settings: ProviderSettingsData) => void;
     disabled: boolean;
+    t: Translations;
 }
 
 const PROVIDER_NAMES = {
@@ -21,7 +22,8 @@ const ProviderCard: React.FC<{
     setting: ProviderSetting;
     onChange: (id: keyof ProviderSettingsData, newSetting: ProviderSetting) => void;
     disabled: boolean;
-}> = ({ id, setting, onChange, disabled }) => {
+    t: Translations;
+}> = ({ id, setting, onChange, disabled, t }) => {
     const [showKey, setShowKey] = useState(false);
 
     useEffect(() => {
@@ -87,14 +89,14 @@ const ProviderCard: React.FC<{
             {setting.enabled && (
                 <div className="mt-4 space-y-4">
                     <div>
-                        <label className="text-sm font-medium text-bunker-700 dark:text-bunker-300">API Key</label>
+                        <label className="text-sm font-medium text-bunker-700 dark:text-bunker-300">{t.settings.apiKey}</label>
                         <div className="relative">
                             <input
                                 type={showKey ? 'text' : 'password'}
                                 value={setting.apiKey}
                                 onChange={handleKeyChange}
                                 disabled={disabled}
-                                placeholder="Enter API Key"
+                                placeholder={t.settings.apiKey}
                                 className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-bunker-300 dark:border-bunker-600 bg-white dark:bg-bunker-700/80 dark:text-bunker-200 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
                             />
                              <button type="button" onClick={() => setShowKey(!showKey)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-bunker-400 hover:text-bunker-600 dark:hover:text-bunker-200">
@@ -103,11 +105,11 @@ const ProviderCard: React.FC<{
                         </div>
                          <div className="flex items-center mt-2">
                             <input type="checkbox" id={`${id}-remember`} checked={setting.remember} onChange={handleRememberChange} disabled={disabled} className="h-4 w-4 rounded border-bunker-300 text-sky-600 focus:ring-sky-500" />
-                            <label htmlFor={`${id}-remember`} className="ml-2 block text-sm text-bunker-600 dark:text-bunker-400">Remember key</label>
+                            <label htmlFor={`${id}-remember`} className="ml-2 block text-sm text-bunker-600 dark:text-bunker-400">{t.settings.remember}</label>
                         </div>
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-bunker-700 dark:text-bunker-300">Models</label>
+                        <label className="text-sm font-medium text-bunker-700 dark:text-bunker-300">{t.settings.models}</label>
                         <div className="mt-1 flex flex-wrap gap-2 p-2 border border-bunker-200 dark:border-bunker-700/80 rounded-md min-h-[40px] bg-bunker-50 dark:bg-bunker-700/50">
                             {setting.models.map(model => (
                                 <span key={model} className="flex items-center gap-1.5 px-2 py-1 bg-sky-100 dark:bg-sky-500/10 text-sky-800 dark:text-sky-200 text-xs font-medium rounded-full">
@@ -127,7 +129,7 @@ const ProviderCard: React.FC<{
                             type="text"
                             onKeyDown={handleAddModel}
                             disabled={disabled}
-                            placeholder="Add model and press Enter"
+                            placeholder={t.settings.addModel}
                             className="mt-2 block w-full pl-3 pr-4 py-2 text-base border-bunker-300 dark:border-bunker-600 bg-white dark:bg-bunker-700/80 dark:text-bunker-200 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
                         />
                     </div>
@@ -137,7 +139,7 @@ const ProviderCard: React.FC<{
     );
 };
 
-export const ProviderSettings: React.FC<ProviderSettingsProps> = ({ settings, onChange, disabled }) => {
+export const ProviderSettings: React.FC<ProviderSettingsProps> = ({ settings, onChange, disabled, t }) => {
     
     const handleProviderChange = (id: keyof ProviderSettingsData, newSetting: ProviderSetting) => {
         onChange({ ...settings, [id]: newSetting });
@@ -145,10 +147,10 @@ export const ProviderSettings: React.FC<ProviderSettingsProps> = ({ settings, on
 
     return (
         <div className="p-6 bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg backdrop-blur-sm border border-white/20">
-            <h2 className="text-2xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">2. Provider Settings</h2>
+            <h2 className="text-2xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.settings.title}</h2>
             <div className="space-y-4">
                {Object.entries(settings).map(([id, setting]) => (
-                   <ProviderCard key={id} id={id as keyof ProviderSettingsData} setting={setting} onChange={handleProviderChange} disabled={disabled} />
+                   <ProviderCard key={id} id={id as keyof ProviderSettingsData} setting={setting} onChange={handleProviderChange} disabled={disabled} t={t} />
                ))}
             </div>
         </div>

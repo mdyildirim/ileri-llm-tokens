@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { ResultRow } from '../types';
+import { ResultRow, Translations } from '../types';
 import { TrendingUpIcon, TrendingDownIcon } from './Icons';
 
 interface AnalysisSummaryProps {
     results: ResultRow[];
+    t: Translations;
 }
 
 interface AnalysisData {
@@ -37,7 +38,7 @@ const PerfMetric: React.FC<{ value: number | null }> = ({ value }) => {
     );
 };
 
-export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results }) => {
+export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results, t }) => {
     const validResults = results.filter(r => !r.error);
 
     const groupedData = validResults.reduce((acc, row) => {
@@ -61,7 +62,7 @@ export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results }) => 
         return acc;
     }, {} as Record<string, AnalysisData>);
 
-    const analysis = Object.values(groupedData).map(data => {
+    const analysis = Object.values(groupedData).map((data: AnalysisData) => {
         const avg = (variant: 'en' | 'tr' | 'tr_nodia') => ({
             tokens: data.metrics[variant].tokens / data.metrics[variant].count,
             time: data.metrics[variant].time / data.metrics[variant].count,
@@ -97,7 +98,7 @@ export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results }) => 
 
     return (
         <div className="mb-8">
-            <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">Performance Analysis</h3>
+            <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.analysis.title}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {analysis.map(({ provider, model, ...comparisons }) => (
                     <div key={`${provider}-${model}`} className="bg-bunker-50 dark:bg-bunker-800/50 p-4 rounded-lg border border-bunker-200 dark:border-bunker-700">
@@ -112,15 +113,15 @@ export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results }) => 
                                     </h5>
                                     <div className="grid grid-cols-3 gap-2 mt-1 text-center">
                                         <div>
-                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">Tokens</div>
+                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">{t.analysis.tokens}</div>
                                             <PerfMetric value={metrics.tokens} />
                                         </div>
                                         <div>
-                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">Time</div>
+                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">{t.analysis.time}</div>
                                             <PerfMetric value={metrics.time} />
                                         </div>
                                         <div>
-                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">Cost</div>
+                                            <div className="text-xs text-bunker-500 dark:text-bunker-400">{t.analysis.cost}</div>
                                             <PerfMetric value={metrics.cost} />
                                         </div>
                                     </div>
