@@ -111,15 +111,26 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                 
                 const requestBody: any = {
                     model: model,
-                    input: text,
-                    instructions: TEST_SYSTEM_PROMPT,
-                    max_output_tokens: TEST_MAX_TOKENS,
+                    input: [
+                        {
+                            role: 'developer',
+                            content: [
+                                { type: 'input_text', text: TEST_SYSTEM_PROMPT }
+                            ]
+                        },
+                        {
+                            role: 'user',
+                            content: [
+                                { type: 'input_text', text: text }
+                            ]
+                        }
+                    ],
                     text: {
                         format: { type: 'text' },
                         verbosity: 'low'
                     },
                     reasoning: {
-                        effort: isReasoningModel ? 'minimal' : 'none',
+                        effort: isReasoningModel ? 'medium' : 'none',
                         summary: null
                     },
                     tools: [],
@@ -129,7 +140,7 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                     ]
                 };
 
-                const customParams = isReasoningModel ? 'Reasoning: minimal, Verbosity: low' : 'Reasoning: none, Verbosity: low';
+                const customParams = isReasoningModel ? 'Reasoning: medium, Verbosity: low' : 'Reasoning: none, Verbosity: low';
 
                 const response = await fetch(url, {
                     method: 'POST',
