@@ -28,7 +28,7 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
 // These constants ensure every LLM is running under identical constraints
 // to make the token benchmark fair.
 const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply only with OK.';
-const TEST_MAX_TOKENS = 3; 
+const TEST_MAX_TOKENS = 16; 
 const TEST_TEMPERATURE = 0; 
 
 const calculateCost = (model: string, prompt_tokens: number, completion_tokens: number): number => {
@@ -107,20 +107,25 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
             try {
                 const url = 'https://api.openai.com/v1/responses';
                 
+                const isReasoningModel = model === 'gpt-5' || model === 'gpt-5-nano' || model === 'gpt-5-mini';
+                
                 const requestBody: any = {
                     model: model,
                     input: text,
                     instructions: TEST_SYSTEM_PROMPT,
                     max_output_tokens: TEST_MAX_TOKENS,
+                    text: {
+                        format: { type: 'text' },
+                        verbosity: 'low'
+                    },
+                    reasoning: {
+                        effort: isReasoningModel ? 'minimal' : 'none',
+                        summary: null
+                    },
+                    store: false
                 };
 
-                const isReasoningModel = model === 'gpt-5' || model === 'gpt-5-nano' || model === 'gpt-5-mini';
-                let customParams: string | undefined;
-                
-                if (isReasoningModel) {
-                    requestBody.reasoning = { effort: 'minimal' };
-                    customParams = 'Reasoning: minimal';
-                }
+                const customParams = isReasoningModel ? 'Reasoning: minimal, Verbosity: low' : 'Reasoning: none, Verbosity: low';
 
                 const response = await fetch(url, {
                     method: 'POST',
