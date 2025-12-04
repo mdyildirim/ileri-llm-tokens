@@ -125,19 +125,21 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         max_output_tokens: TEST_MAX_TOKENS,
                     };
 
-                    // Configuration Parity Logic:
-                    // 1. Temperature:
-                    //    - gpt-5 and gpt-5-nano do NOT accept temperature.
-                    //    - gpt-5.1 and gpt-5-mini DO accept temperature. We set it to 0.
-                    const supportsTemperature = model.includes('gpt-5.1') || model.includes('gpt-5-mini');
-                    if (supportsTemperature) {
-                        requestBody.temperature = TEST_TEMPERATURE; // 0
-                    }
-
-                    // 2. Reasoning:
-                    //    - 'gpt-5' (base) supports reasoning configuration.
-                    //    - We define it here to be explicit, though 'medium' effort is standard.
-                    if (model === 'gpt-5') {
+                    // Configuration Parity Logic for fair benchmark comparison:
+                    // 
+                    // TEMPERATURE:
+                    // - gpt-5 and gpt-5-nano do NOT support custom temperature (only default 1).
+                    // - gpt-5.1 and gpt-5-mini DO support temperature.
+                    // - For FAIR comparison with Gemini (which recommends temp=1 for 2.5 series),
+                    //   we do NOT set temperature for any model, using the default (1) for all.
+                    //   This ensures apples-to-apples comparison across providers.
+                    //
+                    // REASONING:
+                    // - All GPT-5 models (gpt-5, gpt-5-nano, gpt-5-mini) support reasoning config.
+                    // - gpt-5.1 does NOT use reasoning (it's a non-reasoning model).
+                    // - We set effort to 'minimal' to minimize output variance for benchmarking.
+                    const isReasoningModel = model === 'gpt-5' || model === 'gpt-5-nano' || model === 'gpt-5-mini';
+                    if (isReasoningModel) {
                         requestBody.reasoning = {
                             effort: 'minimal'
                         };
@@ -164,10 +166,25 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
 
                     const data = await response.json();
                     
+                    // Debug: Log the full response to help diagnose token extraction
+                    console.log(`[OpenAI ${model}] Response usage:`, JSON.stringify(data.usage, null, 2));
+                    
                     // Parse Token Usage (Strictly per v1/responses spec)
+                    // Per OpenAI docs: usage.input_tokens, usage.output_tokens, usage.total_tokens
+                    // output_tokens_details may contain reasoning_tokens for reasoning models
                     const usage = data.usage || {};
                     prompt_tokens = usage.input_tokens || 0;
+                    
+                    // output_tokens includes both visible output and reasoning tokens
                     completion_tokens = usage.output_tokens || 0;
+                    
+                    // Log detailed breakdown if available
+                    if (usage.output_tokens_details) {
+                        console.log(`[OpenAI ${model}] Output tokens breakdown:`, 
+                            `reasoning=${usage.output_tokens_details.reasoning_tokens || 0}`,
+                            `total_output=${completion_tokens}`);
+                    }
+                    
                     total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens);
                     
                     // Parse Output Text
@@ -269,21 +286,30 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                 }
                 const ai = new genAIModule.GoogleGenAI({ apiKey });
                 
+                // Configuration Parity Logic for fair benchmark comparison:
+                //
+                // TEMPERATURE:
+                // - Google recommends keeping temperature=1.0 (default) for Gemini 2.5 models.
+                // - Setting below 1.0 may cause looping or degraded performance.
+                // - For FAIR comparison with OpenAI GPT-5 (which uses default temp=1),
+                //   we do NOT set temperature, topP, or topK - using defaults for all.
+                //
+                // THINKING:
+                // - Gemini 2.5 series supports thinkingConfig with thinkingBudget.
+                // - We set thinkingBudget=0 to match OpenAI's 'reasoning: minimal' behavior.
                 const generationConfig: any = {
                     maxOutputTokens: TEST_MAX_TOKENS,
-                    // Minimization parameters for determinism - Matches OpenAI Temperature 0
-                    temperature: TEST_TEMPERATURE, 
-                    topP: 0,
-                    topK: 1,
                     candidateCount: 1,
                     // Use standardized system instruction to match OpenAI's system role
                     systemInstruction: TEST_SYSTEM_PROMPT, 
+                    // NOTE: We do NOT set temperature, topP, or topK here.
+                    // This uses defaults (temp=1, topP=0.95, topK=40) for fair comparison
+                    // with OpenAI models that don't support custom temperature.
                 };
 
                 let thinkingInfo = undefined;
-                // Thinking Config is only available for Gemini 2.5 series
-                // We disable it (budget: 0) to ensure we are testing base tokenization/response 
-                // parity with other "fast" models, unless user specifically wants to test reasoning logic.
+                // Thinking Config for Gemini 2.5 series - set to minimal (budget: 0)
+                // to match OpenAI's 'reasoning: minimal' for fair comparison.
                 if (model.includes('gemini-2.5')) {
                     generationConfig.thinkingConfig = { thinkingBudget: 0 }; 
                     thinkingInfo = 'Thinking Budget: 0';
