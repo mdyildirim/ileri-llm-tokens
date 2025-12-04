@@ -130,7 +130,7 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         verbosity: 'low'
                     },
                     reasoning: {
-                        effort: isReasoningModel ? 'medium' : 'none',
+                        effort: isReasoningModel ? 'minimal' : 'none',
                         summary: null
                     },
                     tools: [],
@@ -140,7 +140,7 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                     ]
                 };
 
-                const customParams = isReasoningModel ? 'Reasoning: medium, Verbosity: low' : 'Reasoning: none, Verbosity: low';
+                const customParams = isReasoningModel ? 'Reasoning: minimal, Verbosity: low' : 'Reasoning: none, Verbosity: low';
 
                 const response = await fetch(url, {
                     method: 'POST',
