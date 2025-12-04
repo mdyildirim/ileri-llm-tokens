@@ -8,6 +8,11 @@ A client-side React web application for benchmarking token usage, response time,
 **Last Updated:** December 4, 2025
 
 ## Recent Changes
+- **Dec 4, 2025:** Standardized test configuration for fair comparison
+  - Added reasoning='minimal' for all GPT-5 reasoning models (gpt-5, gpt-5-nano, gpt-5-mini)
+  - Removed custom temperature/topP/topK from Gemini - now uses defaults for parity with OpenAI
+  - Added debug logging for output_tokens extraction verification
+  - Both providers now use identical test conditions (default temperature=1, minimal reasoning)
 - **Dec 4, 2025:** Initial Replit setup completed
   - Configured Vite dev server for port 5000 with HMR over WSS
   - Set up workflow for development server
