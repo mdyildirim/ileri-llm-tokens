@@ -1,104 +1,254 @@
 
+
 import { Provider, ToastMessage } from '../types';
 
 export const PRICING_DATA: Record<string, { input: number; output: number; note?: string }> = {
-    // OpenAI - Prices per 1 million tokens
-    // Note: gpt-5 models are speculative and prices are estimates based on current models.
-    'gpt-5-pro': { input: 15.00, output: 120.00, note: 'Exact price' },
-    'gpt-5': { input: 1.25, output: 10.00, note: 'Exact price' },
-    'gpt-5-mini': { input: 0.25, output: 2.00, note: 'Exact price' },
     
-    // Google Gemini - Prices per 1 million tokens
+    //  OpenAI Real Models
+    'gpt-5.1': { input: 1.25, output: 10.00, note: 'Exact price' },
+    'gpt-5-mini': { input: 0.25, output: 2.00, note: 'Exact price' },
+    'gpt-5-nano': { input: 0.05, output: 0.20, note: 'Estimated price' },
+    'gpt-5': { input: 1.25, output: 10.00, note: 'Exact price' },
+    
+    // Google Gemini
     'gemini-2.5-pro': { input: 1.25, output: 10.00, note: 'Exact price' },
     'gemini-2.5-flash': { input: 0.30, output: 2.50, note: 'Exact price' },
 
-    // Fallbacks for other models in UI
+    // Anthropic
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
     'claude-4-opus': { input: 15.00, output: 75.00 },
     
-    // xAI Grok - Prices per 1 million tokens
+    // xAI Grok
     'grok-4': { input: 3.00, output: 15.00 },
     'grok-4-latest': { input: 3.00, output: 15.00 },
     'grok-4-fast-non-reasoning': { input: 0.20, output: 0.50 },
 };
 
+// --- Standardized Test Conditions ---
+// These constants ensure every LLM is running under identical constraints
+// to make the token benchmark fair.
+const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply only with OK.';
+const TEST_MAX_TOKENS = 16; 
+const TEST_TEMPERATURE = 0; 
+
 const calculateCost = (model: string, prompt_tokens: number, completion_tokens: number): number => {
-    const priceKey = Object.keys(PRICING_DATA).find(key => model.startsWith(key));
+    // Sort keys by length descending to match specific models first (e.g. 'gpt-5-mini' before 'gpt-5')
+    const sortedKeys = Object.keys(PRICING_DATA).sort((a, b) => b.length - a.length);
+    const priceKey = sortedKeys.find(key => model.startsWith(key));
     const pricing = priceKey ? PRICING_DATA[priceKey] : null;
 
     if (!pricing) {
         return 0;
     }
 
-    const inputCost = (prompt_tokens / 1_000_000) * pricing.input;
-    const outputCost = (completion_tokens / 1_000_000) * pricing.output;
+    // Sanitize inputs to avoid NaN
+    const p_tokens = Number.isFinite(prompt_tokens) ? prompt_tokens : 0;
+    const c_tokens = Number.isFinite(completion_tokens) ? completion_tokens : 0;
+
+    const inputCost = (p_tokens / 1_000_000) * pricing.input;
+    const outputCost = (c_tokens / 1_000_000) * pricing.output;
 
     return inputCost + outputCost;
 };
-
-const createPrompt = (text: string) => `System: You are a helpful assistant. Reply only with OK.
-User: ${text}`;
 
 const ERROR_RESULT = {
     prompt_tokens: 0,
     completion_tokens: 0,
     total_tokens: 0,
+    output_text: '',
     mode: 'error' as const,
     cost: 0,
     responseTime: 0,
+};
+
+// Helper to safely extract error message from various API error formats
+const getAPIErrorMessage = (errorData: any): string => {
+    try {
+        if (!errorData) return 'Unknown error';
+        if (typeof errorData === 'string') return errorData;
+        
+        // Check for 'error' object or string
+        if (errorData.error) {
+            const e = errorData.error;
+            if (typeof e === 'string') return e;
+            
+            // OpenAI standard: error.message
+            if (e.message) {
+                let msg = typeof e.message === 'string' ? e.message : JSON.stringify(e.message);
+                // Append type or code if available for debugging
+                if (e.type) msg += ` (Type: ${e.type})`;
+                if (e.code) msg += ` (Code: ${e.code})`;
+                return msg;
+            }
+            return JSON.stringify(e);
+        }
+        
+        // Check for direct 'message' property
+        if (errorData.message) return typeof errorData.message === 'string' ? errorData.message : JSON.stringify(errorData.message);
+        
+        // Fallback to stringifying the whole object
+        return JSON.stringify(errorData);
+    } catch (e) {
+        return 'Error parsing error details';
+    }
 };
 
 export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => void): Provider[] => [
     {
         id: 'openai',
         name: 'OpenAI',
-        async countTokens(text, apiKey, model) {
+        async countTokens(text, apiKey, model, signal) {
             if (!apiKey) {
                 const errorMsg = 'API key is missing.';
-                addToast({ type: 'warning', title: 'OpenAI Error', message: `${errorMsg} Skipping request.` });
                 return { ...ERROR_RESULT, error: errorMsg };
             }
             const startTime = performance.now();
             try {
-                const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
+                // OpenAI Responses API (v1/responses)
+                // Used for GPT-5 family models as per latest documentation.
+                const useResponsesApi = model.startsWith('gpt-5');
+
+                let prompt_tokens = 0;
+                let completion_tokens = 0;
+                let total_tokens = 0;
+                let output_text = '';
+                let customParams = undefined;
+                let cost = 0;
+
+                if (useResponsesApi) {
+                    const url = 'https://api.openai.com/v1/responses';
+                    
+                    const requestBody: any = {
+                        model: model,
+                        input: text,
+                        instructions: TEST_SYSTEM_PROMPT,
+                        max_output_tokens: TEST_MAX_TOKENS,
+                    };
+
+                    // Configuration Parity Logic:
+                    // 1. Temperature:
+                    //    - gpt-5 and gpt-5-nano do NOT accept temperature.
+                    //    - gpt-5.1 and gpt-5-mini DO accept temperature. We set it to 0.
+                    const supportsTemperature = model.includes('gpt-5.1') || model.includes('gpt-5-mini');
+                    if (supportsTemperature) {
+                        requestBody.temperature = TEST_TEMPERATURE; // 0
+                    }
+
+                    // 2. Reasoning:
+                    //    - 'gpt-5' (base) supports reasoning configuration.
+                    //    - We define it here to be explicit, though 'medium' effort is standard.
+                    if (model === 'gpt-5') {
+                        requestBody.reasoning = {
+                            effort: 'minimal'
+                        };
+                        customParams = 'Reasoning: minimal';
+                    }
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(requestBody),
+                        signal
+                    });
+
+                    if (!response.ok) {
+                        let errorData;
+                        try { errorData = await response.json(); } catch (e) { }
+                        console.error("OpenAI Responses API Error:", errorData);
+                        const msg = getAPIErrorMessage(errorData) || `${response.status} ${response.statusText}`;
+                        throw new Error(`OpenAI API Error: ${msg}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    // Parse Token Usage (Strictly per v1/responses spec)
+                    const usage = data.usage || {};
+                    prompt_tokens = usage.input_tokens || 0;
+                    completion_tokens = usage.output_tokens || 0;
+                    total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens);
+                    
+                    // Parse Output Text
+                    // Structure: output[].content[].text (where type='output_text')
+                    if (data.output && Array.isArray(data.output)) {
+                        output_text = data.output.map((msg: any) => {
+                            if (msg.content && Array.isArray(msg.content)) {
+                                return msg.content
+                                    .filter((c: any) => c.type === 'output_text')
+                                    .map((c: any) => c.text || '')
+                                    .join('');
+                            }
+                            return '';
+                        }).join('');
+                    } else {
+                        output_text = '';
+                    }
+
+                } else {
+                    // Standard Chat Completions API (v1/chat/completions)
+                    // For legacy models (gpt-4, gpt-3.5) if used.
+                    const url = 'https://api.openai.com/v1/chat/completions';
+                    
+                    const isO1 = model.startsWith('o1') || model.startsWith('o3');
+                    
+                    const requestBody = {
                         model: model,
                         messages: [
-                            { role: 'system', content: 'You are a helpful assistant. \n\nReply only with OK.' },
-                            { role: 'user', content: `${text}` }
+                            { role: 'system', content: TEST_SYSTEM_PROMPT },
+                            { role: 'user', content: text }
                         ],
-                        max_completion_tokens: 10
-                    })
-                });
+                        [isO1 ? 'max_completion_tokens' : 'max_tokens']: TEST_MAX_TOKENS,
+                        temperature: isO1 ? 1 : TEST_TEMPERATURE,
+                    };
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`OpenAI API Error: ${errorData.error.message}`);
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(requestBody),
+                        signal
+                    });
+
+                    if (!response.ok) {
+                        let errorData;
+                        try { errorData = await response.json(); } catch (e) { }
+                        console.error("OpenAI Chat API Error:", errorData);
+                        const msg = getAPIErrorMessage(errorData) || `${response.status} ${response.statusText}`;
+                        throw new Error(`OpenAI API Error: ${msg}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    // Legacy usage keys
+                    const usage = data.usage || {};
+                    prompt_tokens = usage.prompt_tokens || 0;
+                    completion_tokens = usage.completion_tokens || 0;
+                    total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens);
+                    output_text = data.choices?.[0]?.message?.content || '';
                 }
 
-                const data = await response.json();
+                cost = calculateCost(model, prompt_tokens, completion_tokens);
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                const usage = data.usage;
-                const cost = calculateCost(model, usage.prompt_tokens, usage.completion_tokens);
+
                 return {
-                    prompt_tokens: usage.prompt_tokens,
-                    completion_tokens: usage.completion_tokens,
-                    total_tokens: usage.total_tokens,
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens,
+                    output_text,
                     mode: 'real',
                     cost,
                     responseTime,
+                    customParams
                 };
             } catch (error: any) {
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                const errorMsg = error.message.includes('fetch') ? 'Network/CORS error.' : error.message;
-                addToast({ type: 'error', title: 'OpenAI Error', message: errorMsg });
+                const errorMsg = error.name === 'AbortError' ? 'Request cancelled' : (error.message.includes('fetch') ? 'Network/CORS error.' : error.message);
                 return { ...ERROR_RESULT, error: errorMsg, responseTime };
             }
         }
@@ -106,10 +256,9 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
     {
         id: 'gemini',
         name: 'Google Gemini',
-        async countTokens(text, apiKey, model) {
+        async countTokens(text, apiKey, model, signal) {
             if (!apiKey) {
                 const errorMsg = 'API key is missing.';
-                addToast({ type: 'warning', title: 'Gemini Error', message: `${errorMsg} Skipping request.` });
                 return { ...ERROR_RESULT, error: errorMsg };
             }
             const startTime = performance.now();
@@ -120,38 +269,68 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                 }
                 const ai = new genAIModule.GoogleGenAI({ apiKey });
                 
+                const generationConfig: any = {
+                    maxOutputTokens: TEST_MAX_TOKENS,
+                    // Minimization parameters for determinism - Matches OpenAI Temperature 0
+                    temperature: TEST_TEMPERATURE, 
+                    topP: 0,
+                    topK: 1,
+                    candidateCount: 1,
+                    // Use standardized system instruction to match OpenAI's system role
+                    systemInstruction: TEST_SYSTEM_PROMPT, 
+                };
+
+                let thinkingInfo = undefined;
+                // Thinking Config is only available for Gemini 2.5 series
+                // We disable it (budget: 0) to ensure we are testing base tokenization/response 
+                // parity with other "fast" models, unless user specifically wants to test reasoning logic.
+                if (model.includes('gemini-2.5')) {
+                    generationConfig.thinkingConfig = { thinkingBudget: 0 }; 
+                    thinkingInfo = 'Thinking Budget: 0';
+                }
+
                 const response = await ai.models.generateContent({
                     model: model,
-                    contents: createPrompt(text),
-                    generationConfig: {
-                        maxOutputTokens: 10,
-                    }
+                    contents: text, // Send just the text; system prompt is in config
+                    config: generationConfig, 
                 });
                 
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                const usage = response.usageMetadata;
+                
+                const usage = response.usageMetadata || {};
+                const prompt_tokens = usage.promptTokenCount || 0;
+                const completion_tokens = usage.candidatesTokenCount || 0;
+                const total_tokens = usage.totalTokenCount || (prompt_tokens + completion_tokens);
 
-                if (!usage) {
-                     const errorMsg = 'Could not retrieve usage data from Gemini API response.';
-                     addToast({ type: 'warning', title: 'Gemini Warning', message: errorMsg });
-                     return { ...ERROR_RESULT, error: errorMsg, responseTime };
+                const cost = calculateCost(model, prompt_tokens, completion_tokens);
+                
+                // Robust extraction for Gemini
+                let output_text = '';
+                try {
+                    output_text = response.text || '';
+                } catch (e) {
+                    // Fallback if getter fails (e.g., safety block or empty content)
+                    if (response.candidates?.[0]?.content?.parts) {
+                        output_text = response.candidates[0].content.parts.map((p: any) => p.text).join('');
+                    } else if (response.candidates?.[0]?.finishReason) {
+                         output_text = `[${response.candidates[0].finishReason}]`;
+                    }
                 }
                 
-                const cost = calculateCost(model, usage.promptTokenCount, usage.candidatesTokenCount);
-                
                 return {
-                    prompt_tokens: usage.promptTokenCount,
-                    completion_tokens: usage.candidatesTokenCount,
-                    total_tokens: usage.totalTokenCount, 
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens,
+                    output_text,
                     mode: 'real',
                     cost,
                     responseTime,
+                    customParams: thinkingInfo
                 };
             } catch (error: any) {
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                addToast({ type: 'error', title: 'Gemini Error', message: error.message });
                 return { ...ERROR_RESULT, error: error.message, responseTime };
             }
         }
@@ -160,23 +339,22 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
     {
         id: 'anthropic',
         name: 'Anthropic Claude',
-        async countTokens(text, apiKey, model) {
+        async countTokens(text, apiKey, model, signal) {
              const errorMsg = 'This provider is not implemented yet.';
-             addToast({ type: 'info', title: 'Anthropic', message: errorMsg });
              return { ...ERROR_RESULT, error: errorMsg };
         }
     },
     {
         id: 'grok',
         name: 'xAI Grok',
-        async countTokens(text, apiKey, model) {
+        async countTokens(text, apiKey, model, signal) {
             if (!apiKey) {
                 const errorMsg = 'API key is missing.';
-                addToast({ type: 'warning', title: 'Grok Error', message: `${errorMsg} Skipping request.` });
                 return { ...ERROR_RESULT, error: errorMsg };
             }
             const startTime = performance.now();
             try {
+                // Grok beta uses max_tokens, but might switch. Keep max_tokens for now unless errors arise.
                 const response = await fetch('https://api.x.ai/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -186,38 +364,45 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                     body: JSON.stringify({
                         model: model,
                         messages: [
-                            { role: 'system', content: 'You are a helpful assistant. \n\nReply only with OK.' },
+                            { role: 'system', content: TEST_SYSTEM_PROMPT },
                             { role: 'user', content: text }
                         ],
-                        max_tokens: 10,
-                        temperature: 0,
+                        max_tokens: TEST_MAX_TOKENS,
+                        temperature: TEST_TEMPERATURE,
                         stream: false,
-                    })
+                    }),
+                    signal
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    const message = errorData.error?.message || JSON.stringify(errorData);
-                    throw new Error(`Grok API Error: ${message}`);
+                    let errorData;
+                    try {
+                         errorData = await response.json();
+                    } catch (e) {
+                         throw new Error(`Grok API Error: ${response.status} ${response.statusText}`);
+                    }
+                    console.error("Grok API Error:", errorData);
+                    throw new Error(`Grok API Error: ${getAPIErrorMessage(errorData)}`);
                 }
 
                 const data = await response.json();
+
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                const usage = data.usage;
-
-                if (!usage) {
-                     const errorMsg = 'Could not retrieve usage data from Grok API response.';
-                     addToast({ type: 'warning', title: 'Grok Warning', message: errorMsg });
-                     return { ...ERROR_RESULT, error: errorMsg, responseTime };
-                }
+                const usage = data.usage || {};
                 
-                const cost = calculateCost(model, usage.prompt_tokens, usage.completion_tokens);
+                const prompt_tokens = usage.prompt_tokens || 0;
+                const completion_tokens = usage.completion_tokens || 0;
+                const total_tokens = usage.total_tokens || (prompt_tokens + completion_tokens);
+
+                const cost = calculateCost(model, prompt_tokens, completion_tokens);
+                const output_text = data.choices?.[0]?.message?.content || '';
                 
                 return {
-                    prompt_tokens: usage.prompt_tokens,
-                    completion_tokens: usage.completion_tokens,
-                    total_tokens: usage.total_tokens,
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens,
+                    output_text,
                     mode: 'real',
                     cost,
                     responseTime,
@@ -225,8 +410,7 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
             } catch (error: any) {
                 const endTime = performance.now();
                 const responseTime = Math.round(endTime - startTime);
-                const errorMsg = error.message.includes('fetch') ? 'Network/CORS error.' : error.message;
-                addToast({ type: 'error', title: 'Grok Error', message: errorMsg });
+                const errorMsg = error.name === 'AbortError' ? 'Request cancelled' : (error.message.includes('fetch') ? 'Network/CORS error.' : error.message);
                 return { ...ERROR_RESULT, error: errorMsg, responseTime };
             }
         }

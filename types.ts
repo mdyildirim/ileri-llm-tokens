@@ -23,23 +23,27 @@ export interface ResultRow {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    output_text?: string;
     mode: 'real' | 'error';
     cost: number;
     responseTime: number;
     error?: string;
+    customParams?: string;
 }
 
 export interface Provider {
     id: string;
     name: string;
-    countTokens: (text: string, apiKey: string, model: string) => Promise<{
+    countTokens: (text: string, apiKey: string, model: string, signal?: AbortSignal) => Promise<{
         prompt_tokens: number;
         completion_tokens: number;
         total_tokens: number;
+        output_text?: string;
         mode: 'real' | 'error';
         cost: number;
         responseTime: number;
         error?: string;
+        customParams?: string;
     }>;
 }
 
@@ -125,6 +129,7 @@ export interface Translations {
             prompt: string;
             completion: string;
             total: string;
+            output: string;
             mode: string;
             cost: string;
             time: string;
@@ -134,15 +139,43 @@ export interface Translations {
     charts: {
         title: string;
         noData: string;
-        meanTokens: string;
-        meanRatios: string;
+        cost: string;
+        overhead: string;
         avgTime: string;
     };
     analysis: {
         title: string;
-        tokens: string;
-        time: string;
-        cost: string;
+        modelCompTitle: string;
+        comp: {
+            tr_vs_en: string;
+            tr_nodia_vs_en: string;
+            tr_nodia_vs_tr: string;
+        };
+        subjects: {
+            tr: string;
+            tr_nodia: string;
+            en: string;
+        };
+        sentences: {
+            usesMoreTokens: string;
+            usesFewerTokens: string;
+            isSlower: string;
+            isFaster: string;
+            isMoreExpensive: string;
+            isCheaper: string;
+            isSame: string;
+        };
+        table: {
+            model: string;
+            avgTokens: string;
+            tokenSplit: string;
+            avgTime: string;
+            avgCost: string;
+            costSplit: string;
+            rates: string;
+            input: string;
+            output: string;
+        }
     };
     footer: string;
     toasts: {
@@ -157,5 +190,7 @@ export interface Translations {
         datasetUpdate: string;
         datasetUpdateMsg: string;
         revertedMsg: string;
+        missingKey: string;
+        missingKeyMsg: string;
     };
 }

@@ -17,7 +17,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
     const totalCost = results.reduce((acc, row) => acc + row.cost, 0);
 
     return (
-        <div className="mt-8">
+        <div>
              <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.results.raw}</h3>
             <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <div className="p-3 bg-sky-100 dark:bg-sky-500/10 rounded-lg text-sm">
@@ -46,6 +46,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.prompt}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.completion}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.total}</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.output}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.mode}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.cost}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.time}</th>
@@ -56,10 +57,15 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                             <tr key={index} className={`transition-colors duration-200 ${row.error ? 'bg-red-50 dark:bg-red-500/10' : 'even:bg-bunker-50 dark:even:bg-bunker-800/50'} hover:bg-sky-50 dark:hover:bg-sky-500/10`}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-bunker-900 dark:text-bunker-100">{row.id}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.provider}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.model}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">
+                                    <div className="font-medium">{row.model}</div>
+                                    {row.customParams && (
+                                        <div className="text-[10px] text-bunker-400 dark:text-bunker-500 mt-0.5 font-mono">{row.customParams}</div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.variant}</td>
                                 {row.error ? (
-                                    <td colSpan={6} className="px-6 py-4 whitespace-normal text-sm text-red-700 dark:text-red-300">
+                                    <td colSpan={7} className="px-6 py-4 whitespace-normal text-sm text-red-700 dark:text-red-300">
                                         <div className="flex flex-col">
                                             <span className="font-semibold">{t.results.table.error}</span>
                                             <span>{row.error}</span>
@@ -70,6 +76,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.prompt_tokens}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.completion_tokens}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-bunker-700 dark:text-bunker-200">{row.total_tokens}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300 max-w-[300px] truncate" title={row.output_text}>
+                                            {row.output_text ? row.output_text : (row.completion_tokens > 0 ? <span className="text-bunker-400 italic">&lt;empty&gt;</span> : '')}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${row.mode === 'real' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'}`}>
                                                 {row.mode}

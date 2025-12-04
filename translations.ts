@@ -56,6 +56,7 @@ export const translations: Record<'en' | 'tr', Translations> = {
                 prompt: "Prompt Tokens",
                 completion: "Completion Tokens",
                 total: "Total Tokens",
+                output: "Output",
                 mode: "Mode",
                 cost: "Cost",
                 time: "Response Time (ms)",
@@ -65,15 +66,43 @@ export const translations: Record<'en' | 'tr', Translations> = {
         charts: {
             title: "Visualizations",
             noData: "No valid data available to display charts.",
-            meanTokens: "Mean Prompt Tokens by Variant",
-            meanRatios: "Mean Token Ratios",
-            avgTime: "Average Response Time by Provider (Real API calls)",
+            cost: "Total Estimated Cost (Lower is better)",
+            overhead: "Token Overhead vs English (%)",
+            avgTime: "Average Response Time (Lower is better)",
         },
         analysis: {
             title: "Performance Analysis",
-            tokens: "Tokens",
-            time: "Time",
-            cost: "Cost",
+            modelCompTitle: "Model Comparison Leaderboard",
+            comp: {
+                tr_vs_en: "Turkish vs English",
+                tr_nodia_vs_en: "Normalized TR vs English",
+                tr_nodia_vs_tr: "Diacritic Removal Impact",
+            },
+            subjects: {
+                tr: "Turkish",
+                tr_nodia: "Normalized TR",
+                en: "English"
+            },
+            sentences: {
+                usesMoreTokens: "uses {{value}}% more tokens",
+                usesFewerTokens: "uses {{value}}% fewer tokens",
+                isSlower: "is {{value}}% slower",
+                isFaster: "is {{value}}% faster",
+                isMoreExpensive: "is {{value}}% more expensive",
+                isCheaper: "is {{value}}% cheaper",
+                isSame: "shows no change",
+            },
+            table: {
+                model: "Model",
+                avgTokens: "Avg Tokens",
+                tokenSplit: "In / Out",
+                avgTime: "Avg Time",
+                avgCost: "Avg Cost (1k reqs)",
+                costSplit: "In / Out / Total",
+                rates: "Price per 1M tokens",
+                input: "Input",
+                output: "Output"
+            }
         },
         footer: "Built for client-side analysis. API keys are stored in your browser's memory or localStorage only.",
         toasts: {
@@ -87,7 +116,9 @@ export const translations: Record<'en' | 'tr', Translations> = {
             runCompleteMsg: "Benchmark finished successfully.",
             datasetUpdate: "Dataset Updated",
             datasetUpdateMsg: "tr_nodia column has been re-generated.",
-            revertedMsg: "tr_nodia column has been reverted."
+            revertedMsg: "tr_nodia column has been reverted.",
+            missingKey: "Missing API Key",
+            missingKeyMsg: "Please enter API keys for: {{providers}}"
         }
     },
     tr: {
@@ -144,6 +175,7 @@ export const translations: Record<'en' | 'tr', Translations> = {
                 prompt: "Prompt Token",
                 completion: "Tamamlama Token",
                 total: "Toplam Token",
+                output: "Çıktı",
                 mode: "Mod",
                 cost: "Maliyet",
                 time: "Yanıt Süresi (ms)",
@@ -153,15 +185,43 @@ export const translations: Record<'en' | 'tr', Translations> = {
         charts: {
             title: "Görselleştirmeler",
             noData: "Görüntülenecek geçerli veri yok.",
-            meanTokens: "Varyanta Göre Ortalama Prompt Token",
-            meanRatios: "Ortalama Token Oranları",
-            avgTime: "Sağlayıcıya Göre Ortalama Yanıt Süresi",
+            cost: "Tahmini Toplam Maliyet (Düşük olması iyidir)",
+            overhead: "İngilizce'ye Göre Token Maliyeti (%)",
+            avgTime: "Ortalama Yanıt Süresi (Düşük olması iyidir)",
         },
         analysis: {
             title: "Performans Analizi",
-            tokens: "Token",
-            time: "Süre",
-            cost: "Maliyet",
+            modelCompTitle: "Model Karşılaştırma Sıralaması",
+            comp: {
+                tr_vs_en: "Türkçe vs İngilizce",
+                tr_nodia_vs_en: "Normalize TR vs İngilizce",
+                tr_nodia_vs_tr: "Diyakritiklerin Etkisi",
+            },
+            subjects: {
+                tr: "Türkçe",
+                tr_nodia: "Normalize TR",
+                en: "İngilizce"
+            },
+            sentences: {
+                usesMoreTokens: "%{{value}} daha fazla token kullanıyor",
+                usesFewerTokens: "%{{value}} daha az token kullanıyor",
+                isSlower: "%{{value}} daha yavaş",
+                isFaster: "%{{value}} daha hızlı",
+                isMoreExpensive: "%{{value}} daha pahalı",
+                isCheaper: "%{{value}} daha ucuz",
+                isSame: "değişim göstermedi",
+            },
+            table: {
+                model: "Model",
+                avgTokens: "Ort. Token",
+                tokenSplit: "Girdi / Çıktı",
+                avgTime: "Ort. Süre",
+                avgCost: "Ort. Maliyet (1k istek)",
+                costSplit: "Girdi / Çıktı / Toplam",
+                rates: "1M token başı fiyat",
+                input: "Girdi",
+                output: "Çıktı"
+            }
         },
         footer: "İstemci taraflı analiz için yapılmıştır. API anahtarları sadece tarayıcınızda veya localStorage'da saklanır.",
         toasts: {
@@ -175,7 +235,9 @@ export const translations: Record<'en' | 'tr', Translations> = {
             runCompleteMsg: "Karşılaştırma başarıyla tamamlandı.",
             datasetUpdate: "Veri Seti Güncellendi",
             datasetUpdateMsg: "tr_nodia sütunu yeniden oluşturuldu.",
-            revertedMsg: "tr_nodia sütunu geri alındı."
+            revertedMsg: "tr_nodia sütunu geri alındı.",
+            missingKey: "Eksik API Anahtarı",
+            missingKeyMsg: "Lütfen şunlar için API anahtarlarını girin: {{providers}}"
         }
     }
 };

@@ -27,7 +27,7 @@ const App: React.FC = () => {
     const t = translations[language];
 
     const [providerSettings, setProviderSettings] = useState<ProviderSettingsData>({
-        openai: { enabled: true, apiKey: '', models: ['gpt-5-pro', 'gpt-5', 'gpt-5-mini'], remember: false },
+        openai: { enabled: true, apiKey: '', models: ['gpt-5', 'gpt-5-nano'], remember: false },
         gemini: { enabled: true, apiKey: '', models: ['gemini-2.5-pro', 'gemini-2.5-flash'], remember: false },
         anthropic: { enabled: false, apiKey: '', models: ['claude-3-haiku-20240307', 'claude-4-opus'], remember: false },
         grok: { enabled: false, apiKey: '', models: ['grok-4-latest', 'grok-4-fast-non-reasoning'], remember: false },
@@ -41,6 +41,7 @@ const App: React.FC = () => {
     });
 
     const cancelRunRef = useRef(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         const storedDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -48,11 +49,6 @@ const App: React.FC = () => {
         const storedLang = localStorage.getItem('language') as 'en' | 'tr';
         if (storedLang && (storedLang === 'en' || storedLang === 'tr')) {
             setLanguage(storedLang);
-        } else {
-             // Default is initialized to 'tr', so no action needed if nothing in storage.
-             // If we wanted to detect browser:
-             // const browserLang = navigator.language.startsWith('tr') ? 'tr' : 'en';
-             // setLanguage(browserLang);
         }
     }, []);
 
@@ -110,11 +106,27 @@ const App: React.FC = () => {
     };
     
     const handleRun = async () => {
+        const providers = getProviders(addToast);
+
+        // Validation: Check for missing API keys for enabled providers
+        const missingKeyProviders = (Object.keys(providerSettings) as Array<keyof ProviderSettingsData>)
+            .filter(key => providerSettings[key].enabled && !providerSettings[key].apiKey.trim())
+            .map(key => providers.find(p => p.id === key)?.name || key);
+
+        if (missingKeyProviders.length > 0) {
+            addToast({ 
+                type: 'error', 
+                title: t.toasts.missingKey, 
+                message: t.toasts.missingKeyMsg.replace('{{providers}}', missingKeyProviders.join(', ')) 
+            });
+            return;
+        }
+
         setAppState(AppState.Running);
         setResults([]);
         cancelRunRef.current = false;
+        abortControllerRef.current = new AbortController();
 
-        const providers = getProviders(addToast);
         const enabledProviders = (Object.keys(providerSettings) as Array<keyof ProviderSettingsData>)
             .filter((id) => providerSettings[id].enabled)
             .map((id) => providers.find(p => p.id === id))
@@ -128,149 +140,166 @@ const App: React.FC = () => {
 
         const rowsToProcess = appSettings.runFirstN > 0 ? dataset.slice(0, appSettings.runFirstN) : dataset;
 
-        type Task = { row: DatasetRow; provider: Provider; variant: 'en' | 'tr' | 'tr_nodia', model: string };
+        type Task = { row: DatasetRow; provider: Provider; variant: 'en' | 'tr' | 'tr_nodia'; model: string };
+        
         const tasks: Task[] = [];
         for (const row of rowsToProcess) {
             for (const provider of enabledProviders) {
-                const settings = providerSettings[provider.id as keyof ProviderSettingsData];
-                for (const model of settings.models) {
-                    if (model.trim() === '') continue;
-                    tasks.push({ row, provider, variant: 'en', model });
-                    tasks.push({ row, provider, variant: 'tr', model });
-                    tasks.push({ row, provider, variant: 'tr_nodia', model });
+                const setting = providerSettings[provider.id as keyof ProviderSettingsData];
+                for (const model of setting.models) {
+                    if (model) {
+                         tasks.push({ row, provider, variant: 'en', model });
+                         tasks.push({ row, provider, variant: 'tr', model });
+                         tasks.push({ row, provider, variant: 'tr_nodia', model });
+                    }
                 }
             }
         }
         
         if (tasks.length === 0) {
-            addToast({ type: 'warning', title: t.toasts.noModels, message: t.toasts.noModelsMsg });
+            addToast({ type: 'error', title: t.toasts.noModels, message: t.toasts.noModelsMsg });
             setAppState(AppState.ReadyToRun);
             return;
         }
 
-        let completed = 0;
-        const total = tasks.length;
-
-        const processTask = async (task: Task) => {
-            if (cancelRunRef.current) return;
+        const runTask = async (task: Task): Promise<ResultRow | undefined> => {
+            if (cancelRunRef.current) return undefined;
+            const text = task.row[task.variant];
             
-            const { row, provider, variant, model } = task;
-            const text = row[variant];
-            if (!text) return; // Skip empty text fields
-
-            const settings = providerSettings[provider.id as keyof ProviderSettingsData];
-            const result = await provider.countTokens(text, settings.apiKey, model);
+            const apiKey = providerSettings[task.provider.id as keyof ProviderSettingsData].apiKey;
             
-            if (!cancelRunRef.current) {
-                setResults(prev => [...prev, {
-                    id: row.id,
-                    provider: provider.name,
-                    model: model,
-                    variant: variant,
-                    ...result,
-                }]);
+            try {
+                const result = await task.provider.countTokens(text, apiKey, task.model, abortControllerRef.current?.signal);
+                
+                const resultRow: ResultRow = {
+                    id: task.row.id,
+                    provider: task.provider.name,
+                    model: task.model,
+                    variant: task.variant,
+                    ...result
+                };
+                
+                if (resultRow.error && resultRow.error === 'Request cancelled') {
+                     return undefined;
+                }
+
+                setResults(prev => [...prev, resultRow]);
+                return resultRow;
+            } catch (e) {
+                return undefined;
             }
-            completed++;
-            const progressBar = document.getElementById('progress-bar-inner');
-            if (progressBar) progressBar.style.width = `${(completed / total) * 100}%`;
         };
 
-        await asyncPool(appSettings.concurrency, tasks, processTask, appSettings.delay, cancelRunRef);
-
-        if (cancelRunRef.current) {
-            addToast({ type: 'warning', title: t.toasts.runCancelled, message: t.toasts.runCancelledMsg });
-            setAppState(AppState.ReadyToRun);
-        } else {
-            addToast({ type: 'success', title: t.toasts.runComplete, message: t.toasts.runCompleteMsg });
-            setAppState(AppState.ShowingResults);
+        try {
+            await asyncPool(appSettings.concurrency, tasks, runTask, appSettings.delay, cancelRunRef);
+            
+            if (cancelRunRef.current) {
+                addToast({ type: 'info', title: t.toasts.runCancelled, message: t.toasts.runCancelledMsg });
+                setAppState(AppState.ReadyToRun);
+            } else {
+                addToast({ type: 'success', title: t.toasts.runComplete, message: t.toasts.runCompleteMsg });
+                setAppState(AppState.ShowingResults);
+            }
+        } catch (error) {
+             console.error("Run failed", error);
+             setAppState(AppState.ReadyToRun);
         }
     };
-    
+
     const handleCancel = () => {
         cancelRunRef.current = true;
-    };
-    
-    const handleReset = () => {
-        setAppState(AppState.Initial);
-        setRawData([]);
-        setHeaders([]);
-        setDataset([]);
-        setResults([]);
+        abortControllerRef.current?.abort();
     };
 
-    const renderContent = () => {
-        switch(appState) {
-            case AppState.Initial:
-                return <FileUpload onFileLoaded={handleFileLoaded} t={t} />;
-            case AppState.MappingColumns:
-                return <ColumnMapper headers={headers} onMap={handleColumnMapping} onCancel={() => setAppState(AppState.Initial)} t={t} />;
-            case AppState.ReadyToRun:
-            case AppState.Running:
-            case AppState.ShowingResults:
-                return (
-                    <div className="space-y-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <ProviderSettings settings={providerSettings} onChange={setProviderSettings} disabled={appState === AppState.Running} t={t} />
-                            <RunControls settings={appSettings} onSettingsChange={handleSettingsChange} onRun={handleRun} onCancel={handleCancel} onReset={handleReset} appState={appState} datasetSize={dataset.length} providerSettings={providerSettings} t={t} />
-                        </div>
-                        {(appState === AppState.Running || results.length > 0) &&
-                            <div className="p-4 sm:p-6 bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg backdrop-blur-sm border border-white/20">
-                                <h2 className="text-2xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.results.title}</h2>
-                                {appState === AppState.Running && (
-                                    <div className="w-full bg-bunker-200 dark:bg-bunker-700 rounded-full h-4 mb-4 overflow-hidden">
-                                        <div id="progress-bar-inner" className="bg-sky-500 h-4 rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
-                                    </div>
-                                )}
-                                {appState === AppState.ShowingResults && results.length > 0 && <AnalysisSummary results={results} t={t} />}
-                                <ResultsDisplay results={results} t={t} />
-                                {appState === AppState.ShowingResults && results.length > 0 && <ChartsDisplay results={results} isDarkMode={isDarkMode} t={t} />}
-                            </div>
-                        }
-                    </div>
-                );
-            default:
-                return <p>Loading...</p>;
-        }
+    const handleReset = () => {
+        setAppState(AppState.Initial);
+        setDataset([]);
+        setResults([]);
+        setRawData([]);
+        setHeaders([]);
     };
 
     return (
-        <div className={`min-h-screen bg-bunker-50 dark:bg-bunker-950 bg-gradient-to-br from-bunker-50 to-slate-100 dark:from-bunker-950 dark:to-slate-900 ${isDarkMode ? 'dark' : ''}`}>
-            <div className="container mx-auto p-4 sm:p-6 lg:p-12">
-                <header className="flex justify-between items-center mb-10">
-                    <div className="flex items-center gap-4">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sky-500"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
-                        <h1 className="text-3xl sm:text-4xl font-extrabold text-bunker-900 dark:text-bunker-50 tracking-tight">{t.title}</h1>
+        <div className="min-h-screen bg-gray-50 dark:bg-bunker-950 transition-colors duration-300">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                    <div className="flex items-center gap-3">
+                         <div className="text-sky-500">
+                            <IleriLogo />
+                         </div>
+                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-cyan-500 dark:from-sky-400 dark:to-cyan-300">
+                            {t.title}
+                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={toggleLanguage}
-                            className="px-3 py-1.5 rounded-lg text-sm font-bold bg-bunker-200 dark:bg-bunker-800 text-bunker-700 dark:text-bunker-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
-                        >
-                            {language === 'en' ? 'TR' : 'EN'}
-                        </button>
-                        <a href="https://github.com/mdyildirim/ileri-llm-tokens" target="_blank" rel="noopener noreferrer" aria-label="Github Repository" className="text-bunker-500 dark:text-bunker-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
+                    <div className="flex items-center gap-3 bg-white dark:bg-bunker-900 p-1.5 rounded-full shadow-sm border border-bunker-200 dark:border-bunker-800">
+                         <button onClick={toggleLanguage} className="px-3 py-1 rounded-full bg-bunker-100 dark:bg-bunker-800 text-xs font-bold text-bunker-600 dark:text-bunker-300 hover:bg-bunker-200 dark:hover:bg-bunker-700 transition-colors">
+                            {language.toUpperCase()}
+                         </button>
+                         <div className="w-px h-4 bg-bunker-300 dark:bg-bunker-700"></div>
+                         <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+                         <div className="w-px h-4 bg-bunker-300 dark:bg-bunker-700"></div>
+                         <a href="https://github.com/ileri-ai" target="_blank" rel="noopener noreferrer" className="p-1 text-bunker-500 hover:text-bunker-900 dark:text-bunker-400 dark:hover:text-white transition-colors">
                             <GithubIcon />
-                        </a>
-                        <DarkModeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+                         </a>
                     </div>
                 </header>
                 
-                <main>
-                    {renderContent()}
+                <main className="space-y-6 pb-20">
+                    {appState === AppState.Initial && (
+                         <div className="max-w-2xl mx-auto">
+                            <FileUpload onFileLoaded={handleFileLoaded} t={t} />
+                         </div>
+                    )}
+
+                    {appState === AppState.MappingColumns && (
+                        <ColumnMapper headers={headers} onMap={handleColumnMapping} onCancel={() => setAppState(AppState.Initial)} t={t} />
+                    )}
+
+                    {appState >= AppState.ReadyToRun && (
+                        <div className="space-y-6 animate-fade-in">
+                            <ProviderSettings settings={providerSettings} onChange={setProviderSettings} disabled={appState === AppState.Running} t={t} />
+                            
+                            <RunControls 
+                                settings={appSettings} 
+                                onSettingsChange={handleSettingsChange}
+                                onRun={handleRun}
+                                onCancel={handleCancel}
+                                onReset={handleReset}
+                                appState={appState}
+                                datasetSize={dataset.length}
+                                providerSettings={providerSettings}
+                                t={t}
+                            />
+                            
+                            {(results.length > 0 || appState === AppState.Running) && (
+                                <div className="space-y-6">
+                                    <div className="bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg border border-white/20 p-6 backdrop-blur-sm">
+                                        <ResultsDisplay results={results} t={t} />
+                                    </div>
+                                    
+                                    <div className="bg-white dark:bg-bunker-900/70 rounded-2xl shadow-lg border border-white/20 p-6 backdrop-blur-sm">
+                                        <ChartsDisplay results={results} isDarkMode={isDarkMode} t={t} />
+                                    </div>
+                                    
+                                    <AnalysisSummary results={results} t={t} />
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </main>
 
-                <footer className="text-center mt-12 text-bunker-500 dark:text-bunker-400 text-sm">
-                    <a href="https://ileri.org.tr" target="_blank" rel="noopener noreferrer" className="flex justify-center items-center gap-2 mb-4 group">
-                        <IleriLogo />
-                        <span className="text-2xl font-bold tracking-wider text-bunker-800 dark:text-bunker-100 transition-colors group-hover:text-sky-500 dark:group-hover:text-sky-400">İLERİ</span>
-                    </a>
-                    <p>{t.footer}</p>
+                <footer className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-bunker-950/80 backdrop-blur-md border-t border-bunker-200 dark:border-bunker-800 py-3 text-center text-bunker-500 dark:text-bunker-500 text-xs">
+                    <div className="container mx-auto">
+                        <p>{t.footer}</p>
+                    </div>
                 </footer>
 
-                <div className="fixed bottom-4 right-4 z-50 w-full max-w-sm">
-                    {toasts.map(toast => (
-                        <Toast key={toast.id} toast={toast} onClose={() => setToasts(t => t.filter(item => item.id !== toast.id))} />
-                    ))}
+                <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
+                    <div className="pointer-events-auto">
+                        {toasts.map(toast => (
+                            <Toast key={toast.id} toast={toast} onClose={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} />
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
