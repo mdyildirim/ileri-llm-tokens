@@ -48,6 +48,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.total}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.chars}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.tokensPerChar}</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.outputChars}</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.outputTokPerChar}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.output}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.mode}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.cost}</th>
@@ -67,7 +69,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.variant}</td>
                                 {row.error ? (
-                                    <td colSpan={9} className="px-6 py-4 whitespace-normal text-sm text-red-700 dark:text-red-300">
+                                    <td colSpan={11} className="px-6 py-4 whitespace-normal text-sm text-red-700 dark:text-red-300">
                                         <div className="flex flex-col">
                                             <span className="font-semibold">{t.results.table.error}</span>
                                             <span>{row.error}</span>
@@ -80,6 +82,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-bunker-700 dark:text-bunker-200">{row.total_tokens}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.chars ?? '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-bunker-500 dark:text-bunker-300">{row.tokens_per_char != null ? row.tokens_per_char.toFixed(4) : '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.output_chars ?? '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-bunker-500 dark:text-bunker-300">{row.output_tokens_per_char != null ? row.output_tokens_per_char.toFixed(4) : '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300 max-w-[300px] truncate" title={row.output_text}>
                                             {row.output_text ? row.output_text : (row.completion_tokens > 0 ? <span className="text-bunker-400 italic">&lt;empty&gt;</span> : '')}
                                         </td>

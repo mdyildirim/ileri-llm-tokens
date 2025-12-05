@@ -20,8 +20,7 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
     
     // xAI Grok
     'grok-4': { input: 3.00, output: 15.00 },
-    'grok-4-latest': { input: 3.00, output: 15.00 },
-    'grok-4-fast-non-reasoning': { input: 0.20, output: 0.50 },
+    'grok-4-1-fast-non-reasoning': { input: 0.20, output: 0.50 },
 };
 
 // --- Standardized Test Conditions ---

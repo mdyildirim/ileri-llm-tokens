@@ -25,6 +25,8 @@ export interface ResultRow {
     total_tokens: number;
     chars: number;
     tokens_per_char: number;
+    output_chars: number;
+    output_tokens_per_char: number;
     output_text?: string;
     mode: 'real' | 'error';
     cost: number;
@@ -133,6 +135,8 @@ export interface Translations {
             total: string;
             chars: string;
             tokensPerChar: string;
+            outputChars: string;
+            outputTokPerChar: string;
             output: string;
             mode: string;
             cost: string;
