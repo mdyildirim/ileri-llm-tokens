@@ -172,7 +172,14 @@ const App: React.FC = () => {
             try {
                 const result = await task.provider.countTokens(text, apiKey, task.model, abortControllerRef.current?.signal);
                 
-                const tokens_per_char = chars > 0 ? result.prompt_tokens / chars : 0;
+                const ESTIMATED_SYSTEM_TOKENS: Record<string, number> = {
+                    'xAI Grok': 45,
+                    'Google Gemini': 42,
+                };
+                const systemTokenOffset = ESTIMATED_SYSTEM_TOKENS[task.provider.name] || 0;
+                const effectivePromptTokens = Math.max(0, result.prompt_tokens - systemTokenOffset);
+                
+                const tokens_per_char = chars > 0 ? effectivePromptTokens / chars : 0;
                 const output_chars = result.output_text ? result.output_text.length : 0;
                 const output_tokens_per_char = output_chars > 0 ? result.completion_tokens / output_chars : 0;
                 
