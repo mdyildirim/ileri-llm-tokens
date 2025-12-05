@@ -133,7 +133,6 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         effort: isReasoningModel ? 'minimal' : 'none',
                         summary: null
                     },
-                    temperature: TEST_TEMPERATURE,
                     max_output_tokens: TEST_MAX_TOKENS,
                     tools: [],
                     store: false,

@@ -159,6 +159,31 @@ export interface Translations {
         bestModel: string;
         worstModel: string;
     };
+    keyFindings: {
+        title: string;
+        perModelTitle: string;
+        crossModelTitle: string;
+        championsTitle: string;
+        vsEnglish: string;
+        inTurkish: string;
+        inEnglish: string;
+        costHigher: string;
+        costLower: string;
+        costSame: string;
+        speedSlower: string;
+        speedFaster: string;
+        speedSame: string;
+        fasterThan: string;
+        slowerThan: string;
+        cheaperThan: string;
+        moreExpensiveThan: string;
+        bestForTurkish: string;
+        worstForTurkish: string;
+        lowestPenalty: string;
+        highestPenalty: string;
+        tokenPenalty: string;
+        and: string;
+    };
     analysis: {
         title: string;
         modelCompTitle: string;
