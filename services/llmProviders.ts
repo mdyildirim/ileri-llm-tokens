@@ -133,6 +133,8 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         effort: isReasoningModel ? 'minimal' : 'none',
                         summary: null
                     },
+                    temperature: TEST_TEMPERATURE,
+                    max_output_tokens: TEST_MAX_TOKENS,
                     tools: [],
                     store: false,
                     include: [
@@ -236,11 +238,9 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                 const generationConfig: any = {
                     maxOutputTokens: TEST_MAX_TOKENS,
                     candidateCount: 1,
+                    temperature: TEST_TEMPERATURE,
                     // Use standardized system instruction to match OpenAI's system role
                     systemInstruction: TEST_SYSTEM_PROMPT, 
-                    // NOTE: We do NOT set temperature, topP, or topK here.
-                    // This uses defaults (temp=1, topP=0.95, topK=40) for fair comparison
-                    // with OpenAI models that don't support custom temperature.
                 };
 
                 let thinkingInfo = undefined;
