@@ -27,8 +27,8 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
 // --- Standardized Test Conditions ---
 // These constants ensure every LLM is running under identical constraints
 // to make the token benchmark fair.
-const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply only with OK.';
-const TEST_MAX_TOKENS = 3; 
+const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply ONLY with this EXACT phrase, nothing else: Once there was a big blue elephant - it was such a big, such an heavy elephant!';
+const TEST_MAX_TOKENS = 50; 
 const TEST_TEMPERATURE = 0; 
 
 const calculateCost = (model: string, prompt_tokens: number, completion_tokens: number): number => {
