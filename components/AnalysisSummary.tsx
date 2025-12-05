@@ -32,13 +32,19 @@ interface ModelStats {
     provider: string;
     avgCostEn: number;
     avgCostTr: number;
+    avgCostTrNodia: number;
     avgTimeEn: number;
     avgTimeTr: number;
+    avgTimeTrNodia: number;
     avgTokensEn: number;
     avgTokensTr: number;
+    avgTokensTrNodia: number;
     costChange: number | null;
     timeChange: number | null;
     tokenChange: number | null;
+    diacriticCostChange: number | null;
+    diacriticTimeChange: number | null;
+    diacriticTokenChange: number | null;
 }
 
 const getPerfChange = (base: number, current: number): number | null => {
@@ -81,7 +87,7 @@ const KeyFindings: React.FC<{ modelStats: ModelStats[]; t: Translations }> = ({ 
                 <span className="text-2xl">🔍</span> {kf.title}
             </h3>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 {/* Section 1: Per-Model Language Impact */}
                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800 p-5">
                     <h4 className="font-bold text-amber-800 dark:text-amber-300 mb-4 flex items-center gap-2">
@@ -282,6 +288,66 @@ const KeyFindings: React.FC<{ modelStats: ModelStats[]; t: Translations }> = ({ 
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Section 4: Diacritic Impact (Normalized TR vs TR) */}
+                <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl border border-violet-200 dark:border-violet-800 p-5">
+                    <h4 className="font-bold text-violet-800 dark:text-violet-300 mb-4 flex items-center gap-2">
+                        <span>✂️</span> {kf.diacriticTitle}
+                    </h4>
+                    <div className="space-y-3">
+                        {/* Intro message */}
+                        <div className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-violet-100 dark:border-violet-900">
+                            <p className="text-xs text-violet-700 dark:text-violet-300 italic">
+                                {kf.diacriticSavings}
+                            </p>
+                        </div>
+                        
+                        {/* Per-model diacritic savings */}
+                        {modelStats.map((m, idx) => {
+                            const tokenSavings = m.diacriticTokenChange;
+                            const timeSavings = m.diacriticTimeChange;
+                            const hasSavings = tokenSavings !== null && tokenSavings < -0.5;
+                            const isFaster = timeSavings !== null && timeSavings < -0.5;
+                            const isSlower = timeSavings !== null && timeSavings > 0.5;
+                            
+                            const tokenText = tokenSavings !== null 
+                                ? (tokenSavings < -0.5 
+                                    ? kf.tokensLess.replace('{{value}}', Math.abs(tokenSavings).toFixed(1))
+                                    : tokenSavings > 0.5 
+                                        ? kf.tokensMore.replace('{{value}}', Math.abs(tokenSavings).toFixed(1))
+                                        : kf.tokensSame)
+                                : kf.tokensSame;
+                            
+                            const speedText = timeSavings !== null
+                                ? (timeSavings < -0.5
+                                    ? kf.speedFaster.replace('{{value}}', Math.abs(timeSavings).toFixed(1))
+                                    : timeSavings > 0.5
+                                        ? kf.speedSlower.replace('{{value}}', Math.abs(timeSavings).toFixed(1))
+                                        : kf.speedSame)
+                                : kf.speedSame;
+                            
+                            return (
+                                <div key={idx} className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-violet-100 dark:border-violet-900">
+                                    <div className="font-semibold text-bunker-900 dark:text-bunker-100 text-sm mb-1.5">{m.model}</div>
+                                    <div className="text-xs text-bunker-600 dark:text-bunker-300 space-y-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-medium ${hasSavings ? 'text-green-600 dark:text-green-400' : 'text-bunker-500'}`}>
+                                                🔤 {tokenText}
+                                            </span>
+                                            <span className="text-bunker-400">{kf.vsTurkish}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-medium ${isFaster ? 'text-green-600 dark:text-green-400' : isSlower ? 'text-red-600 dark:text-red-400' : 'text-bunker-500'}`}>
+                                                ⚡ {speedText}
+                                            </span>
+                                            <span className="text-bunker-400">{kf.vsTurkish}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
@@ -535,23 +601,32 @@ export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results, t }) 
     const modelStats: ModelStats[] = Object.values(groupedData).map((data: AnalysisData) => {
         const avgCostEn = data.metrics.en.count ? data.metrics.en.cost / data.metrics.en.count : 0;
         const avgCostTr = data.metrics.tr.count ? data.metrics.tr.cost / data.metrics.tr.count : 0;
+        const avgCostTrNodia = data.metrics.tr_nodia.count ? data.metrics.tr_nodia.cost / data.metrics.tr_nodia.count : 0;
         const avgTimeEn = data.metrics.en.count ? data.metrics.en.time / data.metrics.en.count : 0;
         const avgTimeTr = data.metrics.tr.count ? data.metrics.tr.time / data.metrics.tr.count : 0;
+        const avgTimeTrNodia = data.metrics.tr_nodia.count ? data.metrics.tr_nodia.time / data.metrics.tr_nodia.count : 0;
         const avgTokensEn = data.metrics.en.count ? (data.metrics.en.inputTokens + data.metrics.en.outputTokens) / data.metrics.en.count : 0;
         const avgTokensTr = data.metrics.tr.count ? (data.metrics.tr.inputTokens + data.metrics.tr.outputTokens) / data.metrics.tr.count : 0;
+        const avgTokensTrNodia = data.metrics.tr_nodia.count ? (data.metrics.tr_nodia.inputTokens + data.metrics.tr_nodia.outputTokens) / data.metrics.tr_nodia.count : 0;
 
         return {
             model: data.model,
             provider: data.provider,
             avgCostEn,
             avgCostTr,
+            avgCostTrNodia,
             avgTimeEn,
             avgTimeTr,
+            avgTimeTrNodia,
             avgTokensEn,
             avgTokensTr,
+            avgTokensTrNodia,
             costChange: getPerfChange(avgCostEn, avgCostTr),
             timeChange: getPerfChange(avgTimeEn, avgTimeTr),
             tokenChange: getPerfChange(avgTokensEn, avgTokensTr),
+            diacriticCostChange: getPerfChange(avgCostTr, avgCostTrNodia),
+            diacriticTimeChange: getPerfChange(avgTimeTr, avgTimeTrNodia),
+            diacriticTokenChange: getPerfChange(avgTokensTr, avgTokensTrNodia),
         };
     });
 

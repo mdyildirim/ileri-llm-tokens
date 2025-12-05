@@ -230,54 +230,6 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
     return (
         <div className="space-y-6">
             <h3 className="text-xl font-bold text-bunker-800 dark:text-bunker-100">{t.charts.title}</h3>
-            
-            {/* Key Insight Cards */}
-            {insights && insights.avgPenalty > 0.5 && (
-                <div className="space-y-3">
-                    {/* Main Finding */}
-                    <div className="p-5 bg-gradient-to-r from-rose-50 to-sky-50 dark:from-rose-900/20 dark:to-sky-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
-                        <p className="text-lg text-bunker-800 dark:text-bunker-100 leading-relaxed">
-                            <span className="font-bold text-rose-600 dark:text-rose-400">{t.charts.insightPrefix || 'Key Finding:'}</span>
-                            {' '}
-                            <span dangerouslySetInnerHTML={{ 
-                                __html: (t.charts.insightText || 'Turkish users pay up to {{penalty}} more to ask questions in their own language... but once the AI answers, the cost difference is {{fairness}}.')
-                                    .replace('{{penalty}}', `<strong class="text-rose-600 dark:text-rose-400">${insights.avgPenalty.toFixed(1)}%</strong>`)
-                                    .replace('{{fairness}}', insights.outputDiff < 5 
-                                        ? `<strong class="text-green-600 dark:text-green-400">${t.charts.insightFair || 'nearly identical'}</strong>` 
-                                        : `<strong class="text-amber-600 dark:text-amber-400">${insights.outputDiff.toFixed(1)}% different</strong>`)
-                            }} />
-                        </p>
-                    </div>
-                    
-                    {/* Multi-model insights */}
-                    {insights.bestModel && insights.worstModel && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50">
-                                <p className="text-sm text-bunker-700 dark:text-bunker-200">
-                                    <span className="font-bold text-green-600 dark:text-green-400">{t.charts.bestModel || 'Best for Turkish:'}</span>
-                                    {' '}
-                                    <span className="font-medium">{insights.bestModel.model}</span>
-                                    {' '}
-                                    <span className="text-green-600 dark:text-green-400">
-                                        ({insights.bestModel.penalty > 0 ? '+' : ''}{insights.bestModel.penalty.toFixed(1)}% overhead)
-                                    </span>
-                                </p>
-                            </div>
-                            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50">
-                                <p className="text-sm text-bunker-700 dark:text-bunker-200">
-                                    <span className="font-bold text-red-600 dark:text-red-400">{t.charts.worstModel || 'Worst for Turkish:'}</span>
-                                    {' '}
-                                    <span className="font-medium">{insights.worstModel.model}</span>
-                                    {' '}
-                                    <span className="text-red-600 dark:text-red-400">
-                                        (+{insights.worstModel.penalty.toFixed(1)}% overhead)
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Chart 1: Input Penalty */}

@@ -164,7 +164,9 @@ export interface Translations {
         perModelTitle: string;
         crossModelTitle: string;
         championsTitle: string;
+        diacriticTitle: string;
         vsEnglish: string;
+        vsTurkish: string;
         inTurkish: string;
         inEnglish: string;
         costHigher: string;
@@ -173,6 +175,9 @@ export interface Translations {
         speedSlower: string;
         speedFaster: string;
         speedSame: string;
+        tokensMore: string;
+        tokensLess: string;
+        tokensSame: string;
         fasterThan: string;
         slowerThan: string;
         cheaperThan: string;
@@ -183,6 +188,9 @@ export interface Translations {
         highestPenalty: string;
         tokenPenalty: string;
         and: string;
+        diacriticSavings: string;
+        removingDiacritics: string;
+        noSavings: string;
     };
     analysis: {
         title: string;
