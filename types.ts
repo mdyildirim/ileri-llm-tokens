@@ -156,6 +156,8 @@ export interface Translations {
         insightPrefix: string;
         insightText: string;
         insightFair: string;
+        bestModel: string;
+        worstModel: string;
     };
     analysis: {
         title: string;

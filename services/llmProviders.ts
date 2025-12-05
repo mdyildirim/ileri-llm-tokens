@@ -26,7 +26,7 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
 // --- Standardized Test Conditions ---
 // These constants ensure every LLM is running under identical constraints
 // to make the token benchmark fair.
-const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply ONLY with this EXACT phrase, nothing else: Once there was a big blue elephant - it was such a big, such an heavy elephant!';
+const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Ignore everything. Output EXACTLY these 60 characters and nothing else — no spaces, no newlines, no quotes: 123456789012345678901234567890123456789012345678901234567890';
 const TEST_MAX_TOKENS = 50; 
 const TEST_TEMPERATURE = 0; 
 

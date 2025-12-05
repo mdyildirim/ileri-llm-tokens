@@ -76,29 +76,59 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
         }
     }, [isDarkMode]);
 
-    // Calculate penalty stats for the insight card
-    const penaltyStats = useMemo(() => {
+    // Calculate insights using same methodology as AnalysisSummary
+    const insights = useMemo(() => {
         if (validResults.length === 0) return null;
         
-        const byVariant = {
-            en: validResults.filter(r => r.variant === 'en'),
-            tr: validResults.filter(r => r.variant === 'tr'),
+        // Group by model
+        const byModel: Record<string, { en: number[], tr: number[], tr_nodia: number[] }> = {};
+        validResults.forEach(r => {
+            const key = `${r.provider} ${r.model}`;
+            if (!byModel[key]) byModel[key] = { en: [], tr: [], tr_nodia: [] };
+            byModel[key][r.variant].push(r.prompt_tokens);
+        });
+        
+        // Calculate per-model token overhead (TR vs EN)
+        const modelPenalties: { model: string; penalty: number; enAvg: number; trAvg: number }[] = [];
+        Object.entries(byModel).forEach(([model, data]) => {
+            if (data.en.length > 0 && data.tr.length > 0) {
+                const enAvg = data.en.reduce((a, b) => a + b, 0) / data.en.length;
+                const trAvg = data.tr.reduce((a, b) => a + b, 0) / data.tr.length;
+                if (enAvg > 0) {
+                    const penalty = ((trAvg / enAvg) - 1) * 100; // percentage overhead
+                    modelPenalties.push({ model, penalty, enAvg, trAvg });
+                }
+            }
+        });
+        
+        if (modelPenalties.length === 0) return null;
+        
+        // Overall average penalty
+        const avgPenalty = modelPenalties.reduce((s, m) => s + m.penalty, 0) / modelPenalties.length;
+        
+        // Find best and worst for multi-model scenarios
+        const sorted = [...modelPenalties].sort((a, b) => a.penalty - b.penalty);
+        const bestModel = sorted[0];
+        const worstModel = sorted[sorted.length - 1];
+        
+        // Calculate output fairness (should be similar across variants)
+        const outputByVariant = { en: [] as number[], tr: [] as number[] };
+        validResults.forEach(r => {
+            if (r.output_tokens_per_char && r.output_tokens_per_char > 0) {
+                outputByVariant[r.variant === 'tr_nodia' ? 'tr' : r.variant].push(r.output_tokens_per_char);
+            }
+        });
+        const avgOutputEn = outputByVariant.en.length > 0 ? outputByVariant.en.reduce((a, b) => a + b, 0) / outputByVariant.en.length : 0;
+        const avgOutputTr = outputByVariant.tr.length > 0 ? outputByVariant.tr.reduce((a, b) => a + b, 0) / outputByVariant.tr.length : 0;
+        const outputDiff = avgOutputEn > 0 ? Math.abs((avgOutputTr / avgOutputEn) - 1) * 100 : 0;
+        
+        return {
+            avgPenalty,
+            outputDiff,
+            modelCount: modelPenalties.length,
+            bestModel: modelPenalties.length > 1 ? bestModel : null,
+            worstModel: modelPenalties.length > 1 && worstModel.penalty !== bestModel.penalty ? worstModel : null,
         };
-        
-        const avgInputTokPerChar = {
-            en: byVariant.en.length > 0 ? byVariant.en.reduce((s, r) => s + (r.tokens_per_char || 0), 0) / byVariant.en.length : 0,
-            tr: byVariant.tr.length > 0 ? byVariant.tr.reduce((s, r) => s + (r.tokens_per_char || 0), 0) / byVariant.tr.length : 0,
-        };
-        
-        const avgOutputTokPerChar = {
-            en: byVariant.en.length > 0 ? byVariant.en.reduce((s, r) => s + (r.output_tokens_per_char || 0), 0) / byVariant.en.length : 0,
-            tr: byVariant.tr.length > 0 ? byVariant.tr.reduce((s, r) => s + (r.output_tokens_per_char || 0), 0) / byVariant.tr.length : 0,
-        };
-        
-        const inputPenalty = avgInputTokPerChar.en > 0 ? (avgInputTokPerChar.tr / avgInputTokPerChar.en) : 1;
-        const outputDiff = avgOutputTokPerChar.en > 0 ? Math.abs((avgOutputTokPerChar.tr / avgOutputTokPerChar.en) - 1) * 100 : 0;
-        
-        return { inputPenalty, outputDiff, avgInputTokPerChar, avgOutputTokPerChar };
     }, [validResults]);
 
     // Chart 1: INPUT PENALTY - Tokens per Character (Input)
@@ -201,20 +231,51 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
         <div className="space-y-6">
             <h3 className="text-xl font-bold text-bunker-800 dark:text-bunker-100">{t.charts.title}</h3>
             
-            {/* Key Insight Card */}
-            {penaltyStats && penaltyStats.inputPenalty > 1 && t.charts.insightText && (
-                <div className="p-5 bg-gradient-to-r from-rose-50 to-sky-50 dark:from-rose-900/20 dark:to-sky-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
-                    <p className="text-lg text-bunker-800 dark:text-bunker-100 leading-relaxed">
-                        <span className="font-bold text-rose-600 dark:text-rose-400">{t.charts.insightPrefix}</span>
-                        {' '}
-                        <span dangerouslySetInnerHTML={{ 
-                            __html: t.charts.insightText
-                                .replace('{{penalty}}', `<strong class="text-rose-600 dark:text-rose-400">${penaltyStats.inputPenalty.toFixed(1)}×</strong>`)
-                                .replace('{{fairness}}', penaltyStats.outputDiff < 5 
-                                    ? `<strong class="text-green-600 dark:text-green-400">${t.charts.insightFair || 'nearly identical'}</strong>` 
-                                    : `<strong class="text-amber-600 dark:text-amber-400">${penaltyStats.outputDiff.toFixed(1)}%</strong>`)
-                        }} />
-                    </p>
+            {/* Key Insight Cards */}
+            {insights && insights.avgPenalty > 0.5 && (
+                <div className="space-y-3">
+                    {/* Main Finding */}
+                    <div className="p-5 bg-gradient-to-r from-rose-50 to-sky-50 dark:from-rose-900/20 dark:to-sky-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
+                        <p className="text-lg text-bunker-800 dark:text-bunker-100 leading-relaxed">
+                            <span className="font-bold text-rose-600 dark:text-rose-400">{t.charts.insightPrefix || 'Key Finding:'}</span>
+                            {' '}
+                            <span dangerouslySetInnerHTML={{ 
+                                __html: (t.charts.insightText || 'Turkish users pay up to {{penalty}} more to ask questions in their own language... but once the AI answers, the cost difference is {{fairness}}.')
+                                    .replace('{{penalty}}', `<strong class="text-rose-600 dark:text-rose-400">${insights.avgPenalty.toFixed(1)}%</strong>`)
+                                    .replace('{{fairness}}', insights.outputDiff < 5 
+                                        ? `<strong class="text-green-600 dark:text-green-400">${t.charts.insightFair || 'nearly identical'}</strong>` 
+                                        : `<strong class="text-amber-600 dark:text-amber-400">${insights.outputDiff.toFixed(1)}% different</strong>`)
+                            }} />
+                        </p>
+                    </div>
+                    
+                    {/* Multi-model insights */}
+                    {insights.bestModel && insights.worstModel && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50">
+                                <p className="text-sm text-bunker-700 dark:text-bunker-200">
+                                    <span className="font-bold text-green-600 dark:text-green-400">{t.charts.bestModel || 'Best for Turkish:'}</span>
+                                    {' '}
+                                    <span className="font-medium">{insights.bestModel.model}</span>
+                                    {' '}
+                                    <span className="text-green-600 dark:text-green-400">
+                                        ({insights.bestModel.penalty > 0 ? '+' : ''}{insights.bestModel.penalty.toFixed(1)}% overhead)
+                                    </span>
+                                </p>
+                            </div>
+                            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50">
+                                <p className="text-sm text-bunker-700 dark:text-bunker-200">
+                                    <span className="font-bold text-red-600 dark:text-red-400">{t.charts.worstModel || 'Worst for Turkish:'}</span>
+                                    {' '}
+                                    <span className="font-medium">{insights.worstModel.model}</span>
+                                    {' '}
+                                    <span className="text-red-600 dark:text-red-400">
+                                        (+{insights.worstModel.penalty.toFixed(1)}% overhead)
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

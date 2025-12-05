@@ -14,7 +14,7 @@ Anthropic:
     'claude-3-haiku-20240307', 'claude-4-opus'
     
 xAI Grok:
-    'grok-4',  'grok-4-latest', 'grok-4-fast-non-reasoning'
+    'grok-4',  'grok-4-latest', 'grok-4-1-fast-non-reasoning'
 
 
 We're in December 2025, meaning yor knowledge base may not be up-to-date. So NEVER make any assumptions, ALWAYS search on the web very carefully when you need an information.

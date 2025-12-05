@@ -77,8 +77,10 @@ export const translations: Record<'en' | 'tr', Translations> = {
             inputAxisLabel: "Tokens per Character (Higher = More Expensive)",
             outputAxisLabel: "Tokens per Character (Similar = Fair)",
             insightPrefix: "Key Finding:",
-            insightText: "Turkish users pay up to {{penalty}} more to ask questions in their own language... but once the AI answers, the cost difference is {{fairness}}.",
+            insightText: "Turkish users pay {{penalty}} more tokens to ask questions in their own language... but once the AI answers, the cost difference is {{fairness}}.",
             insightFair: "nearly identical",
+            bestModel: "Best for Turkish:",
+            worstModel: "Worst for Turkish:",
         },
         analysis: {
             title: "Performance Analysis",
@@ -206,8 +208,10 @@ export const translations: Record<'en' | 'tr', Translations> = {
             inputAxisLabel: "Karakter Başına Token (Yüksek = Daha Pahalı)",
             outputAxisLabel: "Karakter Başına Token (Benzer = Adil)",
             insightPrefix: "Önemli Bulgu:",
-            insightText: "Türk kullanıcılar kendi dillerinde soru sormak için {{penalty}} daha fazla ödüyor... ama yapay zeka cevap verdiğinde maliyet farkı {{fairness}}.",
+            insightText: "Türk kullanıcılar kendi dillerinde soru sormak için {{penalty}} daha fazla token harcıyor... ama yapay zeka cevap verdiğinde maliyet farkı {{fairness}}.",
             insightFair: "neredeyse aynı",
+            bestModel: "Türkçe için en iyi:",
+            worstModel: "Türkçe için en kötü:",
         },
         analysis: {
             title: "Performans Analizi",
