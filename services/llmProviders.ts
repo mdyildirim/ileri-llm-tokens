@@ -21,12 +21,13 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
     // xAI Grok
     'grok-4': { input: 3.00, output: 15.00 },
     'grok-4-1-fast-non-reasoning': { input: 0.20, output: 0.50 },
+    'grok-4-1-fast-reasoning': { input: 0.20, output: 0.50 },
 };
 
 // --- Standardized Test Conditions ---
 // These constants ensure every LLM is running under identical constraints
 // to make the token benchmark fair.
-const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Ignore everything. Output EXACTLY these 60 characters and nothing else — no spaces, no newlines, no quotes: 123456789012345678901234567890123456789012345678901234567890';
+const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Respond ONLY and EXACTLY with these 60 characters: 123456789012345678901234567890123456789012345678901234567890';
 const TEST_MAX_TOKENS = 50; 
 const TEST_TEMPERATURE = 0; 
 

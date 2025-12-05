@@ -30,7 +30,7 @@ const App: React.FC = () => {
         openai: { enabled: true, apiKey: '', models: ['gpt-5.1', 'gpt-5-mini', 'gpt-5-nano'], remember: false },
         gemini: { enabled: true, apiKey: '', models: ['gemini-2.5-pro', 'gemini-2.5-flash'], remember: false },
         anthropic: { enabled: false, apiKey: '', models: ['claude-3-haiku-20240307', 'claude-4-opus'], remember: false },
-        grok: { enabled: false, apiKey: '', models: ['grok-4-latest', 'grok-4-1-fast-non-reasoning'], remember: false },
+        grok: { enabled: false, apiKey: '', models: ['grok-4-latest', 'grok-4-1-fast-non-reasoning', 'grok-4-1-fast-reasoning'], remember: false },
     });
     
     const [appSettings, setAppSettings] = useState<AppSettings>({
