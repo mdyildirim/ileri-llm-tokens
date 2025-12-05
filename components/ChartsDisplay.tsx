@@ -8,13 +8,12 @@ interface ChartsDisplayProps {
     t: Translations;
 }
 
-const CHART_COLORS = [
-    { bg: 'rgba(56, 189, 248, 0.6)', border: 'rgba(56, 189, 248, 1)' }, // sky-400
-    { bg: 'rgba(251, 146, 60, 0.6)', border: 'rgba(251, 146, 60, 1)' }, // orange-400
-    { bg: 'rgba(74, 222, 128, 0.6)', border: 'rgba(74, 222, 128, 1)' }, // green-400
-    { bg: 'rgba(192, 132, 252, 0.6)', border: 'rgba(192, 132, 252, 1)' }, // purple-400
-    { bg: 'rgba(244, 63, 94, 0.6)', border: 'rgba(244, 63, 94, 1)' },   // rose-500
-];
+const CHART_COLORS = {
+    en: { bg: 'rgba(56, 189, 248, 0.7)', border: 'rgba(56, 189, 248, 1)' },      // sky-400 (calm, baseline)
+    tr: { bg: 'rgba(244, 63, 94, 0.7)', border: 'rgba(244, 63, 94, 1)' },        // rose-500 (alert, penalty)
+    tr_nodia: { bg: 'rgba(251, 146, 60, 0.7)', border: 'rgba(251, 146, 60, 1)' }, // orange-400
+    fair: { bg: 'rgba(74, 222, 128, 0.7)', border: 'rgba(74, 222, 128, 1)' },     // green-400 (fairness)
+};
 
 const ChartComponent: React.FC<{ chartId: string, config: any }> = ({ chartId, config }) => {
     const chartRef = useRef<HTMLCanvasElement>(null);
@@ -40,9 +39,8 @@ const ChartComponent: React.FC<{ chartId: string, config: any }> = ({ chartId, c
 };
 
 export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMode, t }) => {
-    const validResults = useMemo(() => results.filter(r => !r.error), [results]);
+    const validResults = useMemo(() => results.filter(r => !r.error && r.tokens_per_char != null), [results]);
 
-    // Group keys by model (Provider + Model Name) to make the chart readable
     const models = useMemo(() => [...new Set(validResults.map(r => `${r.provider} ${r.model}`))].sort(), [validResults]);
     const variants: Array<ResultRow['variant']> = useMemo(() => ['en', 'tr', 'tr_nodia'], []);
 
@@ -56,7 +54,7 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
             plugins: {
                 legend: {
                     position: 'top' as const,
-                    labels: { color: textColor }
+                    labels: { color: textColor, font: { weight: 'bold' } }
                 },
                 tooltip: {
                     mode: 'index',
@@ -78,133 +76,118 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
         }
     }, [isDarkMode]);
 
-    // Chart 1: Estimated Cost by Model (Comparison)
-    const costConfig = useMemo(() => {
+    // Calculate penalty stats for the insight card
+    const penaltyStats = useMemo(() => {
+        if (validResults.length === 0) return null;
+        
+        const byVariant = {
+            en: validResults.filter(r => r.variant === 'en'),
+            tr: validResults.filter(r => r.variant === 'tr'),
+        };
+        
+        const avgInputTokPerChar = {
+            en: byVariant.en.length > 0 ? byVariant.en.reduce((s, r) => s + (r.tokens_per_char || 0), 0) / byVariant.en.length : 0,
+            tr: byVariant.tr.length > 0 ? byVariant.tr.reduce((s, r) => s + (r.tokens_per_char || 0), 0) / byVariant.tr.length : 0,
+        };
+        
+        const avgOutputTokPerChar = {
+            en: byVariant.en.length > 0 ? byVariant.en.reduce((s, r) => s + (r.output_tokens_per_char || 0), 0) / byVariant.en.length : 0,
+            tr: byVariant.tr.length > 0 ? byVariant.tr.reduce((s, r) => s + (r.output_tokens_per_char || 0), 0) / byVariant.tr.length : 0,
+        };
+        
+        const inputPenalty = avgInputTokPerChar.en > 0 ? (avgInputTokPerChar.tr / avgInputTokPerChar.en) : 1;
+        const outputDiff = avgOutputTokPerChar.en > 0 ? Math.abs((avgOutputTokPerChar.tr / avgOutputTokPerChar.en) - 1) * 100 : 0;
+        
+        return { inputPenalty, outputDiff, avgInputTokPerChar, avgOutputTokPerChar };
+    }, [validResults]);
+
+    // Chart 1: INPUT PENALTY - Tokens per Character (Input)
+    const inputPenaltyConfig = useMemo(() => {
         if (validResults.length === 0) return {};
+        
         const data = {
             labels: models,
-            datasets: variants.map((variant, index) => {
-                const data = models.map(modelKey => {
+            datasets: variants.map((variant) => {
+                const chartData = models.map(modelKey => {
                     const filtered = validResults.filter(r => `${r.provider} ${r.model}` === modelKey && r.variant === variant);
                     if (filtered.length === 0) return 0;
-                    // Sum total cost for this model/variant in the current run
-                    return filtered.reduce((acc, r) => acc + r.cost, 0);
+                    const sum = filtered.reduce((acc, r) => acc + (r.tokens_per_char || 0), 0);
+                    return sum / filtered.length;
                 });
-                const color = CHART_COLORS[index % CHART_COLORS.length];
+                const color = CHART_COLORS[variant];
                 return {
-                    label: variant.toUpperCase(),
-                    data,
+                    label: t.analysis.subjects[variant],
+                    data: chartData,
                     backgroundColor: color.bg,
                     borderColor: color.border,
-                    borderWidth: 1
-                };
-            })
-        };
-        const options: any = getChartOptions('y'); // Horizontal bars for easier reading of model names
-        options.scales.x.title = {
-             display: true,
-             text: 'Total Cost ($)',
-             color: isDarkMode ? '#e2e8f0' : '#334155'
-        };
-        // Fix for scientific notation on small values
-        options.scales.x.ticks = {
-            ...options.scales.x.ticks,
-            callback: (value: number) => {
-                return '$' + value.toFixed(6).replace(/(\.0+|0+)$/, '');
-            }
-        };
-
-        return { type: 'bar', data, options };
-    }, [models, variants, validResults, getChartOptions, isDarkMode]);
-
-
-    // Chart 2: Percentage Overhead vs English
-    const overheadConfig = useMemo(() => {
-        if (validResults.length === 0) return {};
-        // We need providers for this one specifically to group by provider not just model
-        const providers = [...new Set(validResults.map(r => r.provider))];
-        const comparisonVariants: Array<{ id: 'tr' | 'tr_nodia'; label: string }> = [
-            { id: 'tr', label: `${t.analysis.subjects.tr} vs ${t.analysis.subjects.en}` },
-            { id: 'tr_nodia', label: `${t.analysis.subjects.tr_nodia} vs ${t.analysis.subjects.en}` }
-        ];
-
-        const data = {
-            labels: models, // Use specific models on X axis now for better granularity
-            datasets: comparisonVariants.map((comp, index) => {
-                const data = models.map(modelKey => {
-                    // Filter by specific model string
-                    const modelResults = validResults.filter(r => `${r.provider} ${r.model}` === modelKey);
-                    
-                    // Group by ID to calculate ratio per row
-                    const resultsByRow = modelResults.reduce((acc, r) => {
-                        acc[r.id] = acc[r.id] || {};
-                        acc[r.id][r.variant] = r.prompt_tokens;
-                        return acc;
-                    }, {} as Record<string, Partial<Record<ResultRow['variant'], number>>>);
-
-                    const overheads = Object.values(resultsByRow)
-                        .map((row: any) => {
-                            const en = row.en;
-                            const target = row[comp.id];
-                            if (en && target && en > 0) {
-                                return ((target / en) - 1) * 100;
-                            }
-                            return null;
-                        })
-                        .filter((v): v is number => v !== null && isFinite(v));
-
-                    if (overheads.length === 0) return 0;
-                    return overheads.reduce((a, b) => a + b, 0) / overheads.length;
-                });
-
-                // Start colors from index 3 to look different
-                const color = CHART_COLORS[(index + 3) % CHART_COLORS.length];
-                
-                return {
-                    label: comp.label + ' (%)',
-                    data,
-                    backgroundColor: color.bg,
-                    borderColor: color.border,
-                    borderWidth: 1
+                    borderWidth: 2
                 };
             })
         };
         
-        const options: any = getChartOptions();
-        options.scales.y.title = {
+        const options: any = getChartOptions('y');
+        options.scales.x.title = {
             display: true,
-            text: 'Overhead % (More Tokens)',
-            color: isDarkMode ? '#e2e8f0' : '#334155'
+            text: t.charts.inputAxisLabel || 'Tokens per Character (Higher = More Expensive)',
+            color: isDarkMode ? '#e2e8f0' : '#334155',
+            font: { weight: 'bold' }
+        };
+        options.scales.x.ticks = {
+            ...options.scales.x.ticks,
+            callback: (value: number) => value.toFixed(3)
+        };
+        options.plugins.tooltip = {
+            callbacks: {
+                label: (context: any) => `${context.dataset.label}: ${context.raw.toFixed(4)} tokens/char`
+            }
         };
 
         return { type: 'bar', data, options };
-    }, [models, validResults, getChartOptions, t, isDarkMode]);
-    
-    // Chart 3: Average Response Time by variant
-    const avgResponseTimeConfig = useMemo(() => {
+    }, [models, variants, validResults, getChartOptions, isDarkMode, t]);
+
+    // Chart 2: OUTPUT FAIRNESS - Tokens per Character (Output)
+    const outputFairnessConfig = useMemo(() => {
         if (validResults.length === 0) return {};
+        
         const data = {
             labels: models,
-            datasets: variants.map((variant, index) => {
-                const data = models.map(modelKey => {
-                    const filtered = validResults.filter(r => `${r.provider} ${r.model}` === modelKey && r.variant === variant && r.mode === 'real');
+            datasets: variants.map((variant) => {
+                const chartData = models.map(modelKey => {
+                    const filtered = validResults.filter(r => `${r.provider} ${r.model}` === modelKey && r.variant === variant && (r.output_tokens_per_char || 0) > 0);
                     if (filtered.length === 0) return 0;
-                    const sum = filtered.reduce((acc, r) => acc + r.responseTime, 0);
-                    return Math.round(sum / filtered.length);
+                    const sum = filtered.reduce((acc, r) => acc + (r.output_tokens_per_char || 0), 0);
+                    return sum / filtered.length;
                 });
-                const color = CHART_COLORS[index % CHART_COLORS.length];
-                 return {
-                    label: `${variant.toUpperCase()} (ms)`,
-                    data,
+                const color = CHART_COLORS[variant];
+                return {
+                    label: t.analysis.subjects[variant],
+                    data: chartData,
                     backgroundColor: color.bg,
                     borderColor: color.border,
-                    borderWidth: 1
+                    borderWidth: 2
                 };
-            }),
+            })
         };
-        return { type: 'bar', data, options: getChartOptions() };
-    }, [models, variants, validResults, getChartOptions]);
+        
+        const options: any = getChartOptions('y');
+        options.scales.x.title = {
+            display: true,
+            text: t.charts.outputAxisLabel || 'Tokens per Character (Similar = Fair)',
+            color: isDarkMode ? '#e2e8f0' : '#334155',
+            font: { weight: 'bold' }
+        };
+        options.scales.x.ticks = {
+            ...options.scales.x.ticks,
+            callback: (value: number) => value.toFixed(3)
+        };
+        options.plugins.tooltip = {
+            callbacks: {
+                label: (context: any) => `${context.dataset.label}: ${context.raw.toFixed(4)} tokens/char`
+            }
+        };
 
+        return { type: 'bar', data, options };
+    }, [models, variants, validResults, getChartOptions, isDarkMode, t]);
 
     if (validResults.length === 0) {
         return (
@@ -215,30 +198,47 @@ export const ChartsDisplay: React.FC<ChartsDisplayProps> = ({ results, isDarkMod
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <h3 className="text-xl font-bold text-bunker-800 dark:text-bunker-100">{t.charts.title}</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Chart 1: Cost (Replaces Mean Tokens) */}
-                <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.cost}</h3>
+            
+            {/* Key Insight Card */}
+            {penaltyStats && penaltyStats.inputPenalty > 1 && t.charts.insightText && (
+                <div className="p-5 bg-gradient-to-r from-rose-50 to-sky-50 dark:from-rose-900/20 dark:to-sky-900/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
+                    <p className="text-lg text-bunker-800 dark:text-bunker-100 leading-relaxed">
+                        <span className="font-bold text-rose-600 dark:text-rose-400">{t.charts.insightPrefix}</span>
+                        {' '}
+                        <span dangerouslySetInnerHTML={{ 
+                            __html: t.charts.insightText
+                                .replace('{{penalty}}', `<strong class="text-rose-600 dark:text-rose-400">${penaltyStats.inputPenalty.toFixed(1)}×</strong>`)
+                                .replace('{{fairness}}', penaltyStats.outputDiff < 5 
+                                    ? `<strong class="text-green-600 dark:text-green-400">${t.charts.insightFair || 'nearly identical'}</strong>` 
+                                    : `<strong class="text-amber-600 dark:text-amber-400">${penaltyStats.outputDiff.toFixed(1)}%</strong>`)
+                        }} />
+                    </p>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chart 1: Input Penalty */}
+                <div className="p-4 bg-rose-50/50 dark:bg-rose-900/10 rounded-xl border border-rose-200 dark:border-rose-800/30 h-[450px] flex flex-col">
+                    <div className="mb-3 shrink-0">
+                        <h3 className="text-lg font-bold text-rose-700 dark:text-rose-300">{t.charts.inputPenalty || 'Input Penalty'}</h3>
+                        <p className="text-sm text-rose-600/80 dark:text-rose-400/80">{t.charts.inputPenaltyDesc || 'How many tokens per character does it cost to ASK a question?'}</p>
+                    </div>
                     <div className="relative grow">
-                        <ChartComponent chartId="costChart" config={costConfig} />
+                        <ChartComponent chartId="inputPenaltyChart" config={inputPenaltyConfig} />
                     </div>
                 </div>
                 
-                {/* Chart 2: Overhead */}
-                <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                    <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.overhead}</h3>
-                     <div className="relative grow">
-                        <ChartComponent chartId="overheadChart" config={overheadConfig} />
+                {/* Chart 2: Output Fairness */}
+                <div className="p-4 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-200 dark:border-green-800/30 h-[450px] flex flex-col">
+                    <div className="mb-3 shrink-0">
+                        <h3 className="text-lg font-bold text-green-700 dark:text-green-300">{t.charts.outputFairness || 'Output Fairness'}</h3>
+                        <p className="text-sm text-green-600/80 dark:text-green-400/80">{t.charts.outputFairnessDesc || 'How many tokens per character does the AI use to RESPOND?'}</p>
                     </div>
-                </div>
-            </div>
-            {/* Chart 3: Response Time */}
-            <div className="p-4 bg-bunker-50 dark:bg-bunker-800/50 rounded-lg h-[450px] flex flex-col">
-                <h3 className="text-lg font-semibold mb-2 text-bunker-800 dark:text-bunker-100 shrink-0">{t.charts.avgTime}</h3>
-                <div className="relative grow">
-                    <ChartComponent chartId="responseTimeChart" config={avgResponseTimeConfig} />
+                    <div className="relative grow">
+                        <ChartComponent chartId="outputFairnessChart" config={outputFairnessConfig} />
+                    </div>
                 </div>
             </div>
         </div>

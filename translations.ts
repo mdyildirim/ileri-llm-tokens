@@ -68,11 +68,17 @@ export const translations: Record<'en' | 'tr', Translations> = {
             }
         },
         charts: {
-            title: "Visualizations",
+            title: "The Story: Input Penalty vs Output Fairness",
             noData: "No valid data available to display charts.",
-            cost: "Total Estimated Cost (Lower is better)",
-            overhead: "Token Overhead vs English (%)",
-            avgTime: "Average Response Time (Lower is better)",
+            inputPenalty: "Input Penalty",
+            inputPenaltyDesc: "How many tokens per character does it cost to ASK a question?",
+            outputFairness: "Output Fairness",
+            outputFairnessDesc: "How many tokens per character does the AI use to RESPOND?",
+            inputAxisLabel: "Tokens per Character (Higher = More Expensive)",
+            outputAxisLabel: "Tokens per Character (Similar = Fair)",
+            insightPrefix: "Key Finding:",
+            insightText: "Turkish users pay up to {{penalty}} more to ask questions in their own language... but once the AI answers, the cost difference is {{fairness}}.",
+            insightFair: "nearly identical",
         },
         analysis: {
             title: "Performance Analysis",
@@ -191,11 +197,17 @@ export const translations: Record<'en' | 'tr', Translations> = {
             }
         },
         charts: {
-            title: "Görselleştirmeler",
+            title: "Hikaye: Girdi Cezası vs Çıktı Adaleti",
             noData: "Görüntülenecek geçerli veri yok.",
-            cost: "Tahmini Toplam Maliyet (Düşük olması iyidir)",
-            overhead: "İngilizce'ye Göre Token Maliyeti (%)",
-            avgTime: "Ortalama Yanıt Süresi (Düşük olması iyidir)",
+            inputPenalty: "Girdi Cezası",
+            inputPenaltyDesc: "Bir soru SORMAK için karakter başına kaç token ödeniyor?",
+            outputFairness: "Çıktı Adaleti",
+            outputFairnessDesc: "Yapay zeka CEVAP verirken karakter başına kaç token kullanıyor?",
+            inputAxisLabel: "Karakter Başına Token (Yüksek = Daha Pahalı)",
+            outputAxisLabel: "Karakter Başına Token (Benzer = Adil)",
+            insightPrefix: "Önemli Bulgu:",
+            insightText: "Türk kullanıcılar kendi dillerinde soru sormak için {{penalty}} daha fazla ödüyor... ama yapay zeka cevap verdiğinde maliyet farkı {{fairness}}.",
+            insightFair: "neredeyse aynı",
         },
         analysis: {
             title: "Performans Analizi",

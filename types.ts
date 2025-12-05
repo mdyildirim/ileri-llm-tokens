@@ -147,9 +147,15 @@ export interface Translations {
     charts: {
         title: string;
         noData: string;
-        cost: string;
-        overhead: string;
-        avgTime: string;
+        inputPenalty: string;
+        inputPenaltyDesc: string;
+        outputFairness: string;
+        outputFairnessDesc: string;
+        inputAxisLabel: string;
+        outputAxisLabel: string;
+        insightPrefix: string;
+        insightText: string;
+        insightFair: string;
     };
     analysis: {
         title: string;
