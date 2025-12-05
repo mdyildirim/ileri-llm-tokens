@@ -5,9 +5,17 @@ A client-side React web application for benchmarking token usage, response time,
 
 **Purpose:** Analyze and compare LLM tokenizer efficiency across languages  
 **Current State:** Fully configured and running in Replit environment  
-**Last Updated:** December 4, 2025
+**Last Updated:** December 5, 2025
 
 ## Recent Changes
+- **Dec 5, 2025:** Added run_id field for distinguishing benchmark runs
+  - Format: `YYYY-MM-DD-HH:MM` (e.g., `2025-12-05-19:30`)
+  - Displayed in raw data table and included in CSV/JSONL exports
+  - Helps track and compare results across different benchmark sessions
+- **Dec 5, 2025:** Enhanced Key Findings with 4-section layout
+  - Added "Diacritic Impact" section showing effect of removing Turkish special characters (ğ, ş, ı, ö, ü, ç)
+  - Removed duplicate insights from Charts section
+  - Grid layout: 1 col (mobile) → 2 cols (medium) → 4 cols (large)
 - **Dec 4, 2025:** Standardized test configuration for fair comparison
   - Added reasoning='minimal' for all GPT-5 reasoning models (gpt-5, gpt-5-nano, gpt-5-mini)
   - Removed custom temperature/topP/topK from Gemini - now uses defaults for parity with OpenAI

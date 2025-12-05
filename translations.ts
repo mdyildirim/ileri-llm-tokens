@@ -49,6 +49,7 @@ export const translations: Record<'en' | 'tr', Translations> = {
             exportCsv: "Export CSV",
             exportJsonl: "Export JSONL",
             table: {
+                runId: "Run ID",
                 id: "ID",
                 provider: "Provider",
                 model: "Model",
@@ -213,6 +214,7 @@ export const translations: Record<'en' | 'tr', Translations> = {
             exportCsv: "CSV İndir",
             exportJsonl: "JSONL İndir",
             table: {
+                runId: "Çalıştırma ID",
                 id: "ID",
                 provider: "Sağlayıcı",
                 model: "Model",

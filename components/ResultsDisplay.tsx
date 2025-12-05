@@ -39,6 +39,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                 <table className="min-w-full divide-y divide-bunker-200 dark:divide-bunker-700">
                     <thead className="bg-bunker-100 dark:bg-bunker-800 sticky top-0">
                         <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.runId}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.id}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.provider}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-bunker-500 dark:text-bunker-300 uppercase tracking-wider">{t.results.table.model}</th>
@@ -59,6 +60,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, t }) =>
                     <tbody className="bg-white dark:bg-bunker-900 divide-y divide-bunker-200 dark:divide-bunker-700">
                         {results.map((row, index) => (
                             <tr key={index} className={`transition-colors duration-200 ${row.error ? 'bg-red-50 dark:bg-red-500/10' : 'even:bg-bunker-50 dark:even:bg-bunker-800/50'} hover:bg-sky-50 dark:hover:bg-sky-500/10`}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-bunker-400 dark:text-bunker-500">{row.run_id}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-bunker-900 dark:text-bunker-100">{row.id}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">{row.provider}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-bunker-500 dark:text-bunker-300">

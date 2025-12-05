@@ -127,6 +127,10 @@ const App: React.FC = () => {
         cancelRunRef.current = false;
         abortControllerRef.current = new AbortController();
 
+        // Generate run_id: YYYY-MM-DD-HH:MM format for distinguishing runs
+        const now = new Date();
+        const runId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
         const enabledProviders = (Object.keys(providerSettings) as Array<keyof ProviderSettingsData>)
             .filter((id) => providerSettings[id].enabled)
             .map((id) => providers.find(p => p.id === id))
@@ -189,6 +193,7 @@ const App: React.FC = () => {
                 const output_tokens_per_char = output_chars > 0 ? result.completion_tokens / output_chars : 0;
                 
                 const resultRow: ResultRow = {
+                    run_id: runId,
                     id: task.row.id,
                     provider: task.provider.name,
                     model: task.model,

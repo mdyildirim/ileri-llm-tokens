@@ -16,6 +16,7 @@ export interface DatasetRow {
 }
 
 export interface ResultRow {
+    run_id: string;
     id: string;
     provider: string;
     model: string;
@@ -126,6 +127,7 @@ export interface Translations {
         exportCsv: string;
         exportJsonl: string;
         table: {
+            runId: string;
             id: string;
             provider: string;
             model: string;

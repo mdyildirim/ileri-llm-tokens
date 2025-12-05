@@ -27,7 +27,7 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
 // --- Standardized Test Conditions ---
 // These constants ensure every LLM is running under identical constraints
 // to make the token benchmark fair.
-const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Respond ONLY and EXACTLY with these 60 characters: 123456789012345678901234567890123456789012345678901234567890';
+const TEST_SYSTEM_PROMPT = 'You are a helpful assistant. Reply ONLY with the EXACT SAME text the user sends, nothing else.';
 const TEST_MAX_TOKENS = 50; 
 const TEST_TEMPERATURE = 0; 
 
@@ -140,11 +140,6 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         'reasoning.encrypted_content'
                     ]
                 };
-                
-                // Only add temperature for non-reasoning models (reasoning models don't support it)
-                if (!isReasoningModel) {
-                    requestBody.temperature = TEST_TEMPERATURE;
-                }
 
                 const customParams = isReasoningModel ? 'Reasoning: minimal, Verbosity: low' : 'Reasoning: none, Verbosity: low';
 
