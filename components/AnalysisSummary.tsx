@@ -27,10 +27,266 @@ interface AnalysisData {
     };
 }
 
+interface ModelStats {
+    model: string;
+    provider: string;
+    avgCostEn: number;
+    avgCostTr: number;
+    avgTimeEn: number;
+    avgTimeTr: number;
+    avgTokensEn: number;
+    avgTokensTr: number;
+    costChange: number | null;
+    timeChange: number | null;
+    tokenChange: number | null;
+}
+
 const getPerfChange = (base: number, current: number): number | null => {
     if (base === 0 && current === 0) return 0;
     if (base === 0 || !Number.isFinite(base) || !Number.isFinite(current)) return null;
     return ((current / base) - 1) * 100;
+};
+
+const formatChange = (value: number | null, higherTemplate: string, lowerTemplate: string, sameText: string): string => {
+    if (value === null) return sameText;
+    const absValue = Math.abs(value).toFixed(1);
+    if (Math.abs(value) < 0.5) return sameText;
+    if (value > 0) return higherTemplate.replace('{{value}}', absValue);
+    return lowerTemplate.replace('{{value}}', absValue);
+};
+
+const KeyFindings: React.FC<{ modelStats: ModelStats[]; t: Translations }> = ({ modelStats, t }) => {
+    if (modelStats.length === 0) return null;
+
+    const kf = t.keyFindings;
+
+    const sortedByCostPenalty = [...modelStats]
+        .filter(m => m.costChange !== null)
+        .sort((a, b) => (a.costChange || 0) - (b.costChange || 0));
+    
+    const sortedByTokenPenalty = [...modelStats]
+        .filter(m => m.tokenChange !== null)
+        .sort((a, b) => (a.tokenChange || 0) - (b.tokenChange || 0));
+
+    const bestForTurkish = sortedByCostPenalty[0];
+    const worstForTurkish = sortedByCostPenalty[sortedByCostPenalty.length - 1];
+
+    const sortedByTurkishSpeed = [...modelStats].sort((a, b) => a.avgTimeTr - b.avgTimeTr);
+    const sortedByTurkishCost = [...modelStats].sort((a, b) => a.avgCostTr - b.avgCostTr);
+    const sortedByEnglishCost = [...modelStats].sort((a, b) => a.avgCostEn - b.avgCostEn);
+
+    return (
+        <div className="mb-8">
+            <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100 flex items-center gap-2">
+                <span className="text-2xl">🔍</span> {kf.title}
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Section 1: Per-Model Language Impact */}
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800 p-5">
+                    <h4 className="font-bold text-amber-800 dark:text-amber-300 mb-4 flex items-center gap-2">
+                        <span>📊</span> {kf.perModelTitle}
+                    </h4>
+                    <div className="space-y-3">
+                        {modelStats.map((m, idx) => {
+                            const costText = formatChange(m.costChange, kf.costHigher, kf.costLower, kf.costSame);
+                            const speedText = formatChange(m.timeChange, kf.speedSlower, kf.speedFaster, kf.speedSame);
+                            const isPositiveCost = m.costChange !== null && m.costChange > 0.5;
+                            const isNegativeCost = m.costChange !== null && m.costChange < -0.5;
+                            const isPositiveSpeed = m.timeChange !== null && m.timeChange > 0.5;
+                            const isNegativeSpeed = m.timeChange !== null && m.timeChange < -0.5;
+                            
+                            return (
+                                <div key={idx} className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-amber-100 dark:border-amber-900">
+                                    <div className="font-semibold text-bunker-900 dark:text-bunker-100 text-sm mb-1.5">{m.model}</div>
+                                    <div className="text-xs text-bunker-600 dark:text-bunker-300 space-y-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-medium ${isPositiveCost ? 'text-red-600 dark:text-red-400' : isNegativeCost ? 'text-green-600 dark:text-green-400' : 'text-bunker-500'}`}>
+                                                💰 {costText}
+                                            </span>
+                                            <span className="text-bunker-400">{kf.vsEnglish}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-medium ${isPositiveSpeed ? 'text-red-600 dark:text-red-400' : isNegativeSpeed ? 'text-green-600 dark:text-green-400' : 'text-bunker-500'}`}>
+                                                ⚡ {speedText}
+                                            </span>
+                                            <span className="text-bunker-400">{kf.vsEnglish}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Section 2: Cross-Model Comparison */}
+                <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 rounded-xl border border-sky-200 dark:border-sky-800 p-5">
+                    <h4 className="font-bold text-sky-800 dark:text-sky-300 mb-4 flex items-center gap-2">
+                        <span>⚔️</span> {kf.crossModelTitle}
+                    </h4>
+                    <div className="space-y-4">
+                        {/* Turkish Speed Rankings */}
+                        <div className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-sky-100 dark:border-sky-900">
+                            <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 mb-2">🏎️ Speed {kf.inTurkish}</div>
+                            <div className="space-y-1.5">
+                                {sortedByTurkishSpeed.slice(0, 3).map((m, idx) => {
+                                    const rank = idx + 1;
+                                    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                                    const comparison = idx > 0 ? (() => {
+                                        const fastest = sortedByTurkishSpeed[0];
+                                        const diff = ((m.avgTimeTr - fastest.avgTimeTr) / fastest.avgTimeTr) * 100;
+                                        return diff > 0 ? `+${diff.toFixed(1)}%` : null;
+                                    })() : null;
+                                    
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between text-xs">
+                                            <span className="font-medium text-bunker-700 dark:text-bunker-200">
+                                                {medal} {m.model}
+                                            </span>
+                                            <span className="text-bunker-500 dark:text-bunker-400">
+                                                {m.avgTimeTr.toFixed(0)}ms {comparison && <span className="text-red-500">({comparison})</span>}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Turkish Cost Rankings */}
+                        <div className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-sky-100 dark:border-sky-900">
+                            <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 mb-2">💵 Cost {kf.inTurkish}</div>
+                            <div className="space-y-1.5">
+                                {sortedByTurkishCost.slice(0, 3).map((m, idx) => {
+                                    const rank = idx + 1;
+                                    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                                    const comparison = idx > 0 ? (() => {
+                                        const cheapest = sortedByTurkishCost[0];
+                                        const diff = ((m.avgCostTr - cheapest.avgCostTr) / cheapest.avgCostTr) * 100;
+                                        return diff > 0 ? `+${diff.toFixed(1)}%` : null;
+                                    })() : null;
+                                    
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between text-xs">
+                                            <span className="font-medium text-bunker-700 dark:text-bunker-200">
+                                                {medal} {m.model}
+                                            </span>
+                                            <span className="text-bunker-500 dark:text-bunker-400">
+                                                ${(m.avgCostTr * 1000).toFixed(4)}/1k {comparison && <span className="text-red-500">({comparison})</span>}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* English Cost Rankings */}
+                        <div className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-sky-100 dark:border-sky-900">
+                            <div className="text-xs font-bold uppercase text-sky-600 dark:text-sky-400 mb-2">💵 Cost {kf.inEnglish}</div>
+                            <div className="space-y-1.5">
+                                {sortedByEnglishCost.slice(0, 3).map((m, idx) => {
+                                    const rank = idx + 1;
+                                    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                                    const comparison = idx > 0 ? (() => {
+                                        const cheapest = sortedByEnglishCost[0];
+                                        const diff = ((m.avgCostEn - cheapest.avgCostEn) / cheapest.avgCostEn) * 100;
+                                        return diff > 0 ? `+${diff.toFixed(1)}%` : null;
+                                    })() : null;
+                                    
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between text-xs">
+                                            <span className="font-medium text-bunker-700 dark:text-bunker-200">
+                                                {medal} {m.model}
+                                            </span>
+                                            <span className="text-bunker-500 dark:text-bunker-400">
+                                                ${(m.avgCostEn * 1000).toFixed(4)}/1k {comparison && <span className="text-red-500">({comparison})</span>}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 3: Turkish Language Champions */}
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 p-5">
+                    <h4 className="font-bold text-emerald-800 dark:text-emerald-300 mb-4 flex items-center gap-2">
+                        <span>🏆</span> {kf.championsTitle}
+                    </h4>
+                    <div className="space-y-4">
+                        {/* Best for Turkish */}
+                        {bestForTurkish && (
+                            <div className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-lg p-4 border-2 border-green-300 dark:border-green-700">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-2xl">🥇</span>
+                                    <div>
+                                        <div className="text-xs font-bold uppercase text-green-700 dark:text-green-400">{kf.bestForTurkish}</div>
+                                        <div className="font-bold text-green-900 dark:text-green-200">{bestForTurkish.model}</div>
+                                    </div>
+                                </div>
+                                <div className="text-xs text-green-700 dark:text-green-300 mt-2 space-y-1">
+                                    <div className="flex items-center gap-1">
+                                        <span>✓</span>
+                                        <span>{kf.lowestPenalty}</span>
+                                    </div>
+                                    <div className="font-semibold text-green-800 dark:text-green-200">
+                                        {kf.tokenPenalty.replace('{{value}}', (bestForTurkish.tokenChange || 0).toFixed(1))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Worst for Turkish */}
+                        {worstForTurkish && worstForTurkish !== bestForTurkish && (
+                            <div className="bg-gradient-to-r from-red-100 to-rose-100 dark:from-red-900/40 dark:to-rose-900/40 rounded-lg p-4 border-2 border-red-300 dark:border-red-700">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-2xl">⚠️</span>
+                                    <div>
+                                        <div className="text-xs font-bold uppercase text-red-700 dark:text-red-400">{kf.worstForTurkish}</div>
+                                        <div className="font-bold text-red-900 dark:text-red-200">{worstForTurkish.model}</div>
+                                    </div>
+                                </div>
+                                <div className="text-xs text-red-700 dark:text-red-300 mt-2 space-y-1">
+                                    <div className="flex items-center gap-1">
+                                        <span>✗</span>
+                                        <span>{kf.highestPenalty}</span>
+                                    </div>
+                                    <div className="font-semibold text-red-800 dark:text-red-200">
+                                        {kf.tokenPenalty.replace('{{value}}', (worstForTurkish.tokenChange || 0).toFixed(1))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Token Penalty Ranking */}
+                        {sortedByTokenPenalty.length > 2 && (
+                            <div className="bg-white/60 dark:bg-bunker-800/60 rounded-lg p-3 border border-emerald-100 dark:border-emerald-900">
+                                <div className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400 mb-2">📈 Token Penalty Ranking</div>
+                                <div className="space-y-1.5">
+                                    {sortedByTokenPenalty.map((m, idx) => {
+                                        const penalty = m.tokenChange || 0;
+                                        const isGood = penalty < 5;
+                                        const isBad = penalty > 15;
+                                        
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between text-xs">
+                                                <span className="font-medium text-bunker-700 dark:text-bunker-200">
+                                                    #{idx + 1} {m.model}
+                                                </span>
+                                                <span className={`font-bold ${isGood ? 'text-green-600 dark:text-green-400' : isBad ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                    +{penalty.toFixed(1)}%
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const SentenceRow: React.FC<{ 
@@ -275,8 +531,35 @@ export const AnalysisSummary: React.FC<AnalysisSummaryProps> = ({ results, t }) 
     // Sort analysis for the comparison cards to ensure consistent order
     const sortedAnalysis = [...analysis].sort((a, b) => a.provider.localeCompare(b.provider) || a.model.localeCompare(b.model));
 
+    // Compute modelStats for KeyFindings
+    const modelStats: ModelStats[] = Object.values(groupedData).map((data: AnalysisData) => {
+        const avgCostEn = data.metrics.en.count ? data.metrics.en.cost / data.metrics.en.count : 0;
+        const avgCostTr = data.metrics.tr.count ? data.metrics.tr.cost / data.metrics.tr.count : 0;
+        const avgTimeEn = data.metrics.en.count ? data.metrics.en.time / data.metrics.en.count : 0;
+        const avgTimeTr = data.metrics.tr.count ? data.metrics.tr.time / data.metrics.tr.count : 0;
+        const avgTokensEn = data.metrics.en.count ? (data.metrics.en.inputTokens + data.metrics.en.outputTokens) / data.metrics.en.count : 0;
+        const avgTokensTr = data.metrics.tr.count ? (data.metrics.tr.inputTokens + data.metrics.tr.outputTokens) / data.metrics.tr.count : 0;
+
+        return {
+            model: data.model,
+            provider: data.provider,
+            avgCostEn,
+            avgCostTr,
+            avgTimeEn,
+            avgTimeTr,
+            avgTokensEn,
+            avgTokensTr,
+            costChange: getPerfChange(avgCostEn, avgCostTr),
+            timeChange: getPerfChange(avgTimeEn, avgTimeTr),
+            tokenChange: getPerfChange(avgTokensEn, avgTokensTr),
+        };
+    });
+
     return (
         <div className="space-y-8">
+            {/* Key Findings Section */}
+            <KeyFindings modelStats={modelStats} t={t} />
+
             {/* Model Comparison Section */}
             <div>
                 <h3 className="text-xl font-bold mb-4 text-bunker-800 dark:text-bunker-100">{t.analysis.modelCompTitle}</h3>
