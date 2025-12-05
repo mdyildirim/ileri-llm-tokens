@@ -172,9 +172,14 @@ const App: React.FC = () => {
             try {
                 const result = await task.provider.countTokens(text, apiKey, task.model, abortControllerRef.current?.signal);
                 
+                // System prompt is ~131 chars. Providers that include system tokens in prompt_tokens need offset.
+                // Calibration: Run test with minimal input, subtract user tokens to get system token count.
+                // OpenAI Responses API: developer role tokens are NOT included in input_tokens
+                // Gemini: systemInstruction tokens ARE included in promptTokenCount
+                // Grok: system message tokens ARE included in prompt_tokens
                 const ESTIMATED_SYSTEM_TOKENS: Record<string, number> = {
-                    'xAI Grok': 45,
-                    'Google Gemini': 42,
+                    'xAI Grok': 35,
+                    'Google Gemini': 35,
                 };
                 const systemTokenOffset = ESTIMATED_SYSTEM_TOKENS[task.provider.name] || 0;
                 const effectivePromptTokens = Math.max(0, result.prompt_tokens - systemTokenOffset);
