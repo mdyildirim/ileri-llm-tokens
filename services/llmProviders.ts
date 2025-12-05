@@ -140,6 +140,11 @@ export const getProviders = (addToast: (message: Omit<ToastMessage, 'id'>) => vo
                         'reasoning.encrypted_content'
                     ]
                 };
+                
+                // Only add temperature for non-reasoning models (reasoning models don't support it)
+                if (!isReasoningModel) {
+                    requestBody.temperature = TEST_TEMPERATURE;
+                }
 
                 const customParams = isReasoningModel ? 'Reasoning: minimal, Verbosity: low' : 'Reasoning: none, Verbosity: low';
 
