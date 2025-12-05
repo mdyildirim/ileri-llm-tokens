@@ -23,6 +23,8 @@ export interface ResultRow {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    chars: number;
+    tokens_per_char: number;
     output_text?: string;
     mode: 'real' | 'error';
     cost: number;
@@ -129,6 +131,8 @@ export interface Translations {
             prompt: string;
             completion: string;
             total: string;
+            chars: string;
+            tokensPerChar: string;
             output: string;
             mode: string;
             cost: string;

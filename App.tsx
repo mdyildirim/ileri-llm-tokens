@@ -165,17 +165,22 @@ const App: React.FC = () => {
         const runTask = async (task: Task): Promise<ResultRow | undefined> => {
             if (cancelRunRef.current) return undefined;
             const text = task.row[task.variant];
+            const chars = text.length;
             
             const apiKey = providerSettings[task.provider.id as keyof ProviderSettingsData].apiKey;
             
             try {
                 const result = await task.provider.countTokens(text, apiKey, task.model, abortControllerRef.current?.signal);
                 
+                const tokens_per_char = chars > 0 ? result.prompt_tokens / chars : 0;
+                
                 const resultRow: ResultRow = {
                     id: task.row.id,
                     provider: task.provider.name,
                     model: task.model,
                     variant: task.variant,
+                    chars,
+                    tokens_per_char,
                     ...result
                 };
                 
