@@ -9,7 +9,7 @@ A client-side React web application for benchmarking token usage, response time,
 
 ## Recent Changes
 - **Dec 5, 2025:** Added run_id field for distinguishing benchmark runs
-  - Format: `YYYY-MM-DD-HH:MM` (e.g., `2025-12-05-19:30`)
+  - Format: `YYYY-MM-DD-HH:MM` with 10-minute increments (e.g., `2025-12-05-19:30`)
   - Displayed in raw data table and included in CSV/JSONL exports
   - Helps track and compare results across different benchmark sessions
 - **Dec 5, 2025:** Enhanced Key Findings with 4-section layout

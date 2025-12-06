@@ -28,8 +28,8 @@ const App: React.FC = () => {
 
     const [providerSettings, setProviderSettings] = useState<ProviderSettingsData>({
         openai: { enabled: true, apiKey: '', models: ['gpt-5.1', 'gpt-5-mini', 'gpt-5-nano'], remember: false },
-        gemini: { enabled: true, apiKey: '', models: ['gemini-2.5-pro', 'gemini-2.5-flash'], remember: false },
-        anthropic: { enabled: false, apiKey: '', models: ['claude-3-haiku-20240307', 'claude-4-opus'], remember: false },
+        gemini: { enabled: true, apiKey: '', models: ['gemini-3-pro-preview', 'gemini-2.5-flash'], remember: false },
+        anthropic: { enabled: false, apiKey: '', models: ['claude-haiku-4-5', 'claude-sonnet-4-5'], remember: false },
         grok: { enabled: false, apiKey: '', models: ['grok-4-latest', 'grok-4-1-fast-non-reasoning', 'grok-4-1-fast-reasoning'], remember: false },
     });
     
@@ -127,9 +127,10 @@ const App: React.FC = () => {
         cancelRunRef.current = false;
         abortControllerRef.current = new AbortController();
 
-        // Generate run_id: YYYY-MM-DD-HH:MM format for distinguishing runs
+        // Generate run_id: YYYY-MM-DD-HH:MM format (10-minute increments) for distinguishing runs
         const now = new Date();
-        const runId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const roundedMinutes = Math.floor(now.getMinutes() / 10) * 10;
+        const runId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
 
         const enabledProviders = (Object.keys(providerSettings) as Array<keyof ProviderSettingsData>)
             .filter((id) => providerSettings[id].enabled)

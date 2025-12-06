@@ -11,12 +11,12 @@ export const PRICING_DATA: Record<string, { input: number; output: number; note?
     'gpt-5': { input: 1.25, output: 10.00, note: 'Exact price' },
     
     // Google Gemini
-    'gemini-2.5-pro': { input: 1.25, output: 10.00, note: 'Exact price' },
+    'gemini-3-pro-preview': { input: 2.00, output: 12.00, note: 'Exact price' },
     'gemini-2.5-flash': { input: 0.30, output: 2.50, note: 'Exact price' },
 
     // Anthropic
-    'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
-    'claude-4-opus': { input: 15.00, output: 75.00 },
+    'claude-haiku-4-5': { input: 1.00, output: 5.00 },
+    'claude-sonnet-4-5': { input: 3.00, output: 15.00 },
     
     // xAI Grok
     'grok-4': { input: 3.00, output: 15.00 },
