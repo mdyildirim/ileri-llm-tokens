@@ -182,14 +182,7 @@ const App: React.FC = () => {
                 // OpenAI Responses API: developer role tokens are NOT included in input_tokens
                 // Gemini: systemInstruction tokens ARE included in promptTokenCount
                 // Grok: system message tokens ARE included in prompt_tokens
-                const ESTIMATED_SYSTEM_TOKENS: Record<string, number> = {
-                    'xAI Grok': 35,
-                    'Google Gemini': 35,
-                };
-                const systemTokenOffset = ESTIMATED_SYSTEM_TOKENS[task.provider.name] || 0;
-                const effectivePromptTokens = Math.max(0, result.prompt_tokens - systemTokenOffset);
-                
-                const tokens_per_char = chars > 0 ? effectivePromptTokens / chars : 0;
+                const tokens_per_char = chars > 0 ? result.prompt_tokens / chars : 0;
                 const output_chars = result.output_text ? result.output_text.length : 0;
                 const output_tokens_per_char = output_chars > 0 ? result.completion_tokens / output_chars : 0;
                 
