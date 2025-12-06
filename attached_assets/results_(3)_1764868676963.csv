@@ -1,6 +1,0 @@
-id,provider,model,variant,prompt_tokens,completion_tokens,total_tokens,output_text,mode,cost,responseTime,customParams
-1,OpenAI,gpt-5-nano,tr,26,7,33,OK,real,0.0000027000000000000004,931,Reasoning: minimal, Verbosity: low
-1,OpenAI,gpt-5-nano,en,27,7,34,OK,real,0.00000275,1430,Reasoning: minimal, Verbosity: low
-1,OpenAI,gpt-5-nano,tr_nodia,26,7,33,OK,real,0.0000027000000000000004,850,Reasoning: minimal, Verbosity: low
-2,OpenAI,gpt-5-nano,en,35,7,42,OK,real,0.0000031500000000000003,1226,Reasoning: minimal, Verbosity: low
-2,OpenAI,gpt-5-nano,tr,46,7,53,OK,real,0.0000037,1100,Reasoning: minimal, Verbosity: low

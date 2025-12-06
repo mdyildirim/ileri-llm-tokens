@@ -1,3 +1,0 @@
-id,provider,model,variant,prompt_tokens,completion_tokens,total_tokens,output_text,mode,cost,responseTime,customParams
-1,OpenAI,gpt-5-nano,tr,26,71,97,OK,real,0.0000155,2256,Reasoning: medium, Verbosity: low
-1,OpenAI,gpt-5-nano,en,27,71,98,OK,real,0.000015550000000000002,3014,Reasoning: medium, Verbosity: low
